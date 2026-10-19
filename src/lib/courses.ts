@@ -16,7 +16,7 @@ export type Course = {
   description: string;
   modules: { title: string; items: string[] }[];
   reviews: { name: string; location: string; text: string }[];
-  externalCta?: { label: string; href: string };
+  externalCta?: { label: string; href: string } | undefined;
 };
 
 const mk = (c: Omit<Course, "slug">): Course => ({ ...c, slug: String(c.id) });

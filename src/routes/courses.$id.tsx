@@ -88,7 +88,7 @@ function CoursePage() {
   );
 }
 
-function CTA({ id, external }: { id: string; external?: { label: string; href: string } }) {
+function CTA({ id, external }: { id: string; external?: { label: string; href: string } | undefined }) {
   return (
     <div className="mt-6 flex flex-wrap gap-3">
       <Link to="/checkout/$id" params={{ id }} className="flex items-center gap-2 rounded-md bg-water px-6 py-3 font-semibold text-primary-foreground shadow-glow transition-transform hover:scale-[1.02]">
