@@ -2,6 +2,8 @@ export const WHATSAPP_URL = "https://wa.me/233539279325";
 export const MOMO_NUMBER = "0539279325";
 export const PRICE_GHS = 50;
 export const PRICE_USD = 5;
+export const BUNDLE_GHS = 300;
+export const BUNDLE_USD = 30;
 
 export type Course = {
   id: number;

@@ -64,15 +64,21 @@ export function Stars({ n = 5, className = "h-4 w-4" }: { n?: number; className?
   );
 }
 
+const flyers = import.meta.glob<string>("@/assets/flyers/course-*.jpg", { eager: true, import: "default" });
+const flyerFor = (id: number) => Object.entries(flyers).find(([k]) => k.endsWith(`/course-${id}.jpg`))?.[1];
+
 export function CourseCover({ course, large }: { course: Course; large?: boolean }) {
-  const h = course.hue;
+  const img = flyerFor(course.id);
   return (
-    <div className="relative aspect-video overflow-hidden rounded-lg border border-border"
-      style={{ background: `radial-gradient(circle at 20% 20%, oklch(0.55 0.18 ${h}) 0%, transparent 55%), radial-gradient(circle at 85% 90%, oklch(0.45 0.15 ${h + 40}) 0%, transparent 50%), oklch(0.14 0 0)` }}>
-      <div className="absolute inset-0 grid-bg opacity-40" />
-      <span className={`absolute right-4 top-2 font-mono font-bold text-foreground/15 ${large ? "text-9xl" : "text-7xl"}`}>{String(course.id).padStart(2, "0")}</span>
+    <div className="relative aspect-video overflow-hidden rounded-lg border border-border bg-card">
+      {img && <img src={img} alt={`${course.title} course flyer`} loading="lazy" width={1280} height={720} className="absolute inset-0 h-full w-full object-cover" />}
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+      <span className={`absolute right-3 top-3 flex flex-col items-center rounded-lg border border-foreground/20 bg-background/70 font-bold leading-none backdrop-blur ${large ? "px-4 py-2" : "px-3 py-1.5"}`}>
+        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Course</span>
+        <span className={`text-water ${large ? "text-4xl" : "text-2xl"}`}>{String(course.id).padStart(2, "0")}</span>
+      </span>
       <div className="absolute bottom-4 left-4 right-4">
-        <span className="rounded-full border border-foreground/20 bg-background/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest backdrop-blur">Video + PDF</span>
+        <span className="rounded-full border border-foreground/20 bg-background/50 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest backdrop-blur">Video + PDF</span>
         <p className={`mt-2 font-bold leading-tight ${large ? "text-3xl md:text-4xl" : "text-xl"}`}>{course.short}</p>
       </div>
     </div>
