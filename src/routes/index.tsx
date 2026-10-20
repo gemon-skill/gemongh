@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Play, ShieldCheck, Zap, Users } from "lucide-react";
 import hero from "@/assets/hero.jpg";
+import proofVideo from "@/assets/proof-video.mp4.asset.json";
+import proofPoster from "@/assets/proof-poster.jpg.asset.json";
 import { courses } from "@/lib/courses";
 import { CourseCover, Stars } from "@/components/site";
 
@@ -51,12 +53,15 @@ function Index() {
 
       <section id="proof" className="mx-auto max-w-7xl px-5 py-20">
         <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-          <div className="relative aspect-video overflow-hidden rounded-xl border border-border shadow-glow">
-            <img src={hero} alt="" loading="lazy" width={1600} height={912} className="h-full w-full scale-110 object-cover" />
-            <div className="absolute inset-0 flex items-center justify-center bg-background/40">
-              <span className="flex h-20 w-20 animate-pulse items-center justify-center rounded-full bg-water"><Play className="ml-1 h-8 w-8 fill-primary-foreground text-primary-foreground" /></span>
-            </div>
-            <span className="absolute bottom-3 left-3 rounded bg-background/80 px-2 py-1 font-mono text-xs">Student success stories · 2:14</span>
+          <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-card shadow-glow">
+            <video
+              src={proofVideo.url}
+              poster={proofPoster.url}
+              controls
+              playsInline
+              preload="metadata"
+              className="absolute inset-0 h-full w-full object-contain"
+            />
           </div>
           <div>
             <p className="font-mono text-xs uppercase tracking-widest text-primary">// Proof of results</p>
