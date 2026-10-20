@@ -2,13 +2,16 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CreditCard, Smartphone, Lock } from "lucide-react";
-import { getCourse, MOMO_NUMBER, PRICE_GHS, PRICE_USD } from "@/lib/courses";
+import { getCourse, MOMO_NUMBER, PRICE_GHS as BASE_GHS, PRICE_USD as BASE_USD, BUNDLE_GHS, BUNDLE_USD } from "@/lib/courses";
 
 export const Route = createFileRoute("/checkout/$id")({
   loader: ({ params }) => {
-    const course = getCourse(params.id);
-    if (!course) throw notFound();
-    return { course };
+    if (params.id === "all") {
+      return { course: { id: "ALL", slug: "1", title: "All 10 courses bundle" }, bundle: true, ghs: BUNDLE_GHS, usd: BUNDLE_USD };
+    }
+    const c = getCourse(params.id);
+    if (!c) throw notFound();
+    return { course: { id: String(c.id), slug: c.slug, title: c.title }, bundle: false, ghs: BASE_GHS, usd: BASE_USD };
   },
   head: () => ({
     meta: [
@@ -27,7 +30,7 @@ export const Route = createFileRoute("/checkout/$id")({
 const input = "w-full rounded-md border border-input bg-background px-4 py-3 outline-none focus:border-primary";
 
 function Checkout() {
-  const { course } = Route.useLoaderData();
+  const { course, bundle, ghs: PRICE_GHS, usd: PRICE_USD } = Route.useLoaderData();
   const [mode, setMode] = useState<"momo" | "card">("momo");
   const [provider, setProvider] = useState<"mtn" | "telecel">("mtn");
   const ref = `${course.id}+JAMES`;
@@ -51,9 +54,11 @@ function Checkout() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-12">
-      <Link to="/courses/$id" params={{ id: course.slug }} className="font-mono text-xs uppercase text-muted-foreground hover:text-foreground">← Back to course</Link>
+      {bundle
+        ? <Link to="/" className="font-mono text-xs uppercase text-muted-foreground hover:text-foreground">← All courses</Link>
+        : <Link to="/courses/$id" params={{ id: course.slug }} className="font-mono text-xs uppercase text-muted-foreground hover:text-foreground">← Back to course</Link>}
       <h1 className="mt-4 text-4xl font-bold">Checkout</h1>
-      <p className="mt-2 text-muted-foreground">Course {course.id}: {course.title}</p>
+      <p className="mt-2 text-muted-foreground">{bundle ? `${course.title} — save GHC 200` : `Course ${course.id}: ${course.title}`}</p>
 
       <div className="mt-8 grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-2">
         {([["momo", Smartphone, "Mobile Money (Ghana)", `GHC ${PRICE_GHS}`], ["card", CreditCard, "International Card", `$${PRICE_USD}`]] as const).map(([k, I, l, p]) => (

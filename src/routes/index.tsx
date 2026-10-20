@@ -106,6 +106,14 @@ function Index() {
       <section id="courses" className="mx-auto max-w-7xl scroll-mt-20 px-5 py-20">
         <p className="font-mono text-xs uppercase tracking-widest text-primary">// Catalog</p>
         <h2 className="mt-3 text-4xl font-bold">All courses</h2>
+        <div className="mt-8 flex flex-col gap-4 rounded-xl border border-accent/50 bg-accent/10 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <span className="rounded-full bg-accent px-2 py-0.5 font-mono text-xs font-bold uppercase text-accent-foreground">Save 40%</span>
+            <p className="mt-2 text-2xl font-bold">Get all 10 courses for GHC 300</p>
+            <p className="text-sm text-muted-foreground"><s>GHC 500</s> · one payment, lifetime access</p>
+          </div>
+          <Link to="/checkout/$id" params={{ id: "all" }} className="rounded-md bg-accent px-6 py-3 text-center font-semibold text-accent-foreground shadow-glow transition-transform hover:scale-[1.03]">Buy all 10 — GHC 300</Link>
+        </div>
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((c) => (
             <Link key={c.id} to="/courses/$id" params={{ id: c.slug }} className="group flex flex-col rounded-xl border border-border bg-card p-3 transition-all hover:-translate-y-1 hover:border-primary/50 hover:shadow-glow">
