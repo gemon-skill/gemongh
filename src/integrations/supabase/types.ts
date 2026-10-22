@@ -14,7 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      payment_orders: {
+        Row: {
+          amount: number
+          checkout_token_hash: string
+          course_selection: string
+          created_at: string
+          currency: string
+          email: string
+          provider: string
+          reference: string
+          status: string
+          verified_at: string | null
+        }
+        Insert: {
+          amount: number
+          checkout_token_hash: string
+          course_selection: string
+          created_at?: string
+          currency?: string
+          email: string
+          provider: string
+          reference: string
+          status?: string
+          verified_at?: string | null
+        }
+        Update: {
+          amount?: number
+          checkout_token_hash?: string
+          course_selection?: string
+          created_at?: string
+          currency?: string
+          email?: string
+          provider?: string
+          reference?: string
+          status?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
