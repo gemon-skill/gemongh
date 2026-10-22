@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Header and footer share the same prepared logo image; derive the square favicon from its coin emblem so branding stays consistent.

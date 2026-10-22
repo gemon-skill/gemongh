@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Menu, X, Star, MessageCircle } from "lucide-react";
 import { WHATSAPP_URL, type Course } from "@/lib/courses";
+import { Button } from "@/components/ui/button";
+import gemonLogo from "@/assets/gemon-logo-header.jpg";
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -13,7 +15,9 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
-        <Link to="/" className="text-2xl font-bold tracking-[0.2em] text-water">GEMON</Link>
+        <Link to="/" aria-label="GEMON home" className="block shrink-0">
+          <img src={gemonLogo} alt="GEMON — African Money Generator" width={812} height={280} className="h-12 w-auto max-w-[180px] object-contain" />
+        </Link>
         <nav className="hidden gap-8 md:flex">
           {links.map((l) => (
             <Link key={l.to} to={l.to} className="font-mono text-sm uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground" activeProps={{ className: "text-primary" }} activeOptions={{ exact: true }}>
@@ -21,7 +25,7 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <button className="md:hidden" onClick={() => setOpen(!open)} aria-label="Menu">{open ? <X /> : <Menu />}</button>
+        <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen(!open)} aria-label="Menu" aria-expanded={open}>{open ? <X /> : <Menu />}</Button>
       </div>
       {open && (
         <nav className="flex flex-col gap-4 border-t border-border bg-background px-5 py-4 md:hidden">
@@ -38,7 +42,9 @@ export function Footer() {
   return (
     <footer className="border-t border-border py-10">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-5 sm:flex-row">
-        <span className="text-xl font-bold tracking-[0.2em] text-water">GEMON</span>
+        <Link to="/" aria-label="GEMON home" className="block shrink-0">
+          <img src={gemonLogo} alt="GEMON — African Money Generator" width={812} height={280} loading="lazy" className="h-auto w-56 max-w-full" />
+        </Link>
         <p className="font-mono text-xs text-muted-foreground">(C)2026 Gemon.Co</p>
       </div>
     </footer>
