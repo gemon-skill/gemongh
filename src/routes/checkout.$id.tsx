@@ -1,130 +1,136 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
-import { toast } from "sonner";
-import { CreditCard, Smartphone, Lock } from "lucide-react";
-import { getCourse, MOMO_NUMBER, PRICE_GHS as BASE_GHS, PRICE_USD as BASE_USD, BUNDLE_GHS, BUNDLE_USD } from "@/lib/courses";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useRef, useState } from "react";
+import { Smartphone, LockKeyhole, ShieldCheck, Loader2, RefreshCw, ArrowLeft } from "lucide-react";
+import { getCourse, PRICE_GHS, BUNDLE_GHS } from "@/lib/courses";
+import { beginPayment, checkPayment, getPurchaseState, submitPaymentOtp } from "@/lib/paystack.functions";
+import { Button } from "@/components/ui/button";
+import { PurchaseAccess } from "@/components/purchase-access";
 
 export const Route = createFileRoute("/checkout/$id")({
   loader: ({ params }) => {
-    if (params.id === "all") {
-      return { course: { id: "ALL", slug: "1", title: "All 10 courses bundle" }, bundle: true, ghs: BUNDLE_GHS, usd: BUNDLE_USD };
-    }
-    const c = getCourse(params.id);
-    if (!c) throw notFound();
-    return { course: { id: String(c.id), slug: c.slug, title: c.title }, bundle: false, ghs: BASE_GHS, usd: BASE_USD };
+    const course = getCourse(params.id);
+    if (params.id !== "all" && !course) throw notFound();
+    return { selection: params.id, course, title: params.id === "all" ? "All 10 courses bundle" : course?.title ?? "Course", price: params.id === "all" ? BUNDLE_GHS : PRICE_GHS };
   },
-  head: () => ({
-    meta: [
-      { title: "Checkout — GEMON" },
-      { name: "description", content: "Pay with MTN MoMo, Telecel Cash or card." },
-      { property: "og:title", content: "Checkout — GEMON" },
-      { property: "og:description", content: "Secure checkout with MoMo or card." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
+  head: ({ loaderData }) => ({ meta: [
+    { title: `${loaderData?.title ?? "Checkout"} · Paystack checkout — GEMON` },
+    { name: "description", content: "Secure fixed-price course payments with MTN, Telecel or AirtelTigo through Paystack." },
+    { property: "og:title", content: "GEMON · Paystack course checkout" },
+    { property: "og:description", content: "Pay for your selected course or ten-course bundle with Ghana mobile money." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }, { name: "robots", content: "noindex" },
+  ] }),
   component: Checkout,
 });
 
 const input = "w-full rounded-md border border-input bg-background px-4 py-3 outline-none focus:border-primary";
+const providers = [{ id: "mtn", name: "MTN", wallet: "MoMo" }, { id: "vod", name: "Telecel", wallet: "Cash" }, { id: "atl", name: "AirtelTigo", wallet: "Money" }] as const;
 
 function Checkout() {
-  const { course, bundle, ghs: PRICE_GHS, usd: PRICE_USD } = Route.useLoaderData();
-  const [mode, setMode] = useState<"momo" | "card">("momo");
-  const [provider, setProvider] = useState<"mtn" | "telecel">("mtn");
-  const ref = `${course.id}+JAMES`;
-  const steps = provider === "mtn"
-    ? ["Dial *170#", "Select Option 1 “Transfer Money”", "Select Option 1 “Momo User”"]
-    : ["Dial *110#", "Select Option 1 “Send Money”", "Select Option 1 “Telecel Cash User”"];
-  const all = [
-    ...steps,
-    <>Enter Merchant Number: <b className="text-foreground">{MOMO_NUMBER}</b> and continue.</>,
-    <>Enter the Amount: <b className="text-foreground">GHC {PRICE_GHS}</b></>,
-    <>Enter Reference: Course Number + Short Name (e.g. <code className="rounded bg-muted px-1.5 font-mono text-primary">{ref}</code>)</>,
-    "Enter your MoMo PIN.",
-    "Select 1 to confirm “Yes”.",
-  ];
+  const { selection, course, title, price } = Route.useLoaderData();
+  const begin = useServerFn(beginPayment);
+  const verify = useServerFn(checkPayment);
+  const restore = useServerFn(getPurchaseState);
+  const sendOtp = useServerFn(submitPaymentOtp);
+  const [provider, setProvider] = useState<"mtn" | "vod" | "atl">("mtn");
+  const [reference, setReference] = useState<string | null>(null);
+  const [status, setStatus] = useState("idle");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [restoring, setRestoring] = useState(true);
+  const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
+  const inFlight = useRef(false);
+  const owned = selection === "all" ? courses.length === 10 : courses.some(c => c.id === selection);
 
-  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    let active = true;
+    setRestoring(true); setReference(null); setCourses([]); setStatus("idle"); setError(""); setMessage("");
+    restore({ data: { selection } }).then(result => {
+      if (!active) return;
+      setCourses(result.courses);
+      if (result.pendingReference) { setReference(result.pendingReference); setStatus("pending"); setMessage("An earlier payment is awaiting confirmation. Check its status before paying again."); }
+      if (result.unavailable) setError("Purchase verification is temporarily unavailable. Please try again before making another payment.");
+    }).catch(() => { if (active) setError("Your purchases could not be checked. Refresh before starting another payment."); })
+      .finally(() => { if (active) setRestoring(false); });
+    return () => { active = false; };
+  }, [selection, restore]);
+
+  async function check() {
+    if (!reference || inFlight.current) return;
+    inFlight.current = true; setBusy(true); setError("");
+    try {
+      const result = await verify({ data: { reference } });
+      // Do not erase an outstanding OTP challenge when a verify call is still pending.
+      setStatus(previous => result.status === "pending" && previous === "send_otp" ? previous : result.status);
+      setMessage(result.message);
+      if (result.status === "paid") setCourses(result.courses);
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to check payment. Please try again."); }
+    finally { inFlight.current = false; setBusy(false); }
+  }
+
+  useEffect(() => {
+    if (!reference || status === "paid" || status === "failed") return;
+    let attempts = 0;
+    const timer = window.setInterval(() => { attempts++; void check(); if (attempts >= 30) window.clearInterval(timer); }, 10000);
+    return () => window.clearInterval(timer);
+  }, [reference, status]);
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    e.currentTarget.reset();
-    toast.success("Verification submitted! Check your email for course access shortly.");
-  };
+    if (inFlight.current || reference || owned) return;
+    const form = new FormData(e.currentTarget);
+    inFlight.current = true; setBusy(true); setError("");
+    try {
+      const result = await begin({ data: { selection, provider, email: String(form.get("email")), phone: String(form.get("phone")).trim() } });
+      setReference(result.reference); setStatus(result.status === "success" ? "pending" : result.status); setMessage(result.message);
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to start payment. Please try again."); }
+    finally { inFlight.current = false; setBusy(false); }
+  }
 
-  return (
-    <div className="mx-auto max-w-5xl px-5 py-12">
-      {bundle
-        ? <Link to="/" className="font-mono text-xs uppercase text-muted-foreground hover:text-foreground">← All courses</Link>
-        : <Link to="/courses/$id" params={{ id: course.slug }} className="font-mono text-xs uppercase text-muted-foreground hover:text-foreground">← Back to course</Link>}
-      <h1 className="mt-4 text-4xl font-bold">Checkout</h1>
-      <p className="mt-2 text-muted-foreground">{bundle ? `${course.title} — save GHC 200` : `Course ${course.id}: ${course.title}`}</p>
+  async function submitOtp(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!reference || inFlight.current) return;
+    const otp = String(new FormData(e.currentTarget).get("otp"));
+    inFlight.current = true; setBusy(true); setError("");
+    try {
+      const result = await sendOtp({ data: { reference, otp } });
+      setStatus(result.status === "success" ? "pending" : result.status); setMessage(result.message);
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to submit the code. Please try again."); }
+    finally { inFlight.current = false; setBusy(false); }
+  }
 
-      <div className="mt-8 grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-2">
-        {([["momo", Smartphone, "Mobile Money (Ghana)", `GHC ${PRICE_GHS}`], ["card", CreditCard, "International Card", `$${PRICE_USD}`]] as const).map(([k, I, l, p]) => (
-          <button key={k} onClick={() => setMode(k)} className={`flex flex-col items-center gap-1 rounded-lg p-4 text-center transition-colors sm:flex-row sm:justify-between sm:text-left ${mode === k ? "bg-water text-primary-foreground" : "hover:bg-muted"}`}>
-            <span className="flex items-center gap-2 font-semibold"><I className="h-5 w-5" />{l}</span>
-            <span className="font-mono text-sm">{p}</span>
-          </button>
-        ))}
+  return <div className="mx-auto max-w-4xl px-5 py-10 sm:py-14">
+    <Link to={course ? "/courses/$id" : "/"} params={{ id: selection }} className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft className="size-4" />{course ? "Back to course" : "All courses"}</Link>
+    <h1 className="mt-5 text-4xl font-bold">Checkout</h1>
+    <div className="mt-7 grid gap-8 md:grid-cols-[1fr_1.15fr]">
+      <div className="border-b border-border pb-6 md:border-b-0 md:border-r md:pr-8">
+        <p className="font-mono text-xs uppercase text-primary">{selection === "all" ? "Complete collection · 10 courses" : `Course ${selection.padStart(2, "0")}`}</p>
+        <h2 className="mt-3 text-2xl font-semibold leading-snug">{title}</h2>
+        <p className="mt-6 text-4xl font-bold">GHC {price}<LockKeyhole className="ml-3 inline size-5 text-muted-foreground" /></p>
+        {selection === "all" && <p className="mt-2 text-sm text-accent"><s className="text-muted-foreground">GHC 500</s> · Save GHC 200</p>}
+        <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><ShieldCheck className="size-5 shrink-0 text-success" />Paystack · Secure mobile money payment</p>
       </div>
-
-      {mode === "momo" ? (
-        <div className="mt-8 grid gap-8 lg:grid-cols-2">
-          <div>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setProvider("mtn")} className={`flex h-20 items-center justify-center rounded-xl border-2 bg-mtn transition-opacity ${provider === "mtn" ? "border-foreground" : "border-transparent opacity-50"}`}>
-                <span className="rounded-[50%] border-2 border-background px-4 py-1 text-xl font-black text-background">MTN</span>
-                <span className="ml-2 font-bold text-background">MoMo</span>
-              </button>
-              <button onClick={() => setProvider("telecel")} className={`flex h-20 items-center justify-center rounded-xl border-2 bg-telecel transition-opacity ${provider === "telecel" ? "border-foreground" : "border-transparent opacity-50"}`}>
-                <span className="text-xl font-bold lowercase text-foreground">telecel</span>
-                <span className="ml-2 font-semibold text-foreground">Cash</span>
-              </button>
-            </div>
-            <ol className="mt-6 space-y-3">
-              {all.map((s, i) => (
-                <li key={i} className="flex gap-4 rounded-lg border border-border bg-card p-4">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-sm font-semibold text-primary">{i + 1}</span>
-                  <span className="text-muted-foreground"><span className="font-mono text-xs uppercase text-foreground">Step {i + 1}: </span>{s}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-          <form onSubmit={submit} className="h-fit space-y-5 rounded-xl border border-border bg-card p-6 lg:sticky lg:top-24">
-            <h2 className="text-xl font-bold">Verify your payment</h2>
-            <label className="block space-y-2">
-              <span className="text-sm font-medium">Transaction ID + MoMo Reference</span>
-              <input required className={input} placeholder={`92305761031+${ref}`} />
-            </label>
-            <label className="block space-y-2">
-              <span className="text-sm font-medium">Active Email Address</span>
-              <input required type="email" className={input} placeholder="you@example.com" />
-              <span className="block text-xs text-muted-foreground">To receive your instant course access notification.</span>
-            </label>
-            <button className="w-full rounded-md bg-water py-3 font-semibold text-primary-foreground shadow-glow">Submit Payment Verification</button>
-          </form>
-        </div>
-      ) : (
-        <form onSubmit={submit} className="mx-auto mt-8 max-w-lg space-y-5 rounded-xl border border-border bg-card p-6">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-xl font-bold">Card payment</h2>
-            <span className="text-3xl font-bold text-water">${PRICE_USD}.00 USD</span>
-          </div>
-          <input required className={input} placeholder="Card number" inputMode="numeric" />
-          <div className="grid grid-cols-2 gap-4">
-            <input required className={input} placeholder="MM / YY" />
-            <input required className={input} placeholder="CVV" inputMode="numeric" />
-          </div>
-          <select required className={input} defaultValue="">
-            <option value="" disabled>Country</option>
-            {["United States", "United Kingdom", "Nigeria", "Canada", "Germany", "South Africa", "Kenya", "Other"].map((c) => <option key={c}>{c}</option>)}
-          </select>
-          <input required type="email" className={input} placeholder="Email for course access" />
-          <button className="flex w-full items-center justify-center gap-2 rounded-md bg-water py-3 font-semibold text-primary-foreground shadow-glow"><Lock className="h-4 w-4" /> Pay ${PRICE_USD}.00</button>
-          <p className="text-center text-xs text-muted-foreground">Card processing is a preview — connect a payment provider to charge cards.</p>
-        </form>
-      )}
+      <div className="min-w-0">
+        {restoring ? <p role="status" className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" />Checking your purchases…</p> : owned ? <div role="status" className="flex items-center gap-2 font-semibold text-success"><ShieldCheck />Payment verified · Purchased</div> : !reference ? <form onSubmit={submit} className="space-y-5">
+          <fieldset disabled={busy}>
+            <legend className="mb-3 font-semibold">Mobile money network</legend>
+            <div className="grid grid-cols-3 gap-2">{providers.map(p => <Button key={p.id} type="button" variant={provider === p.id ? "default" : "outline"} aria-pressed={provider === p.id} onClick={() => setProvider(p.id)} className="h-20 flex-col gap-1 px-1 whitespace-normal"><Smartphone /><span>{p.name}</span><span className="text-xs font-normal">{p.wallet}</span></Button>)}</div>
+          </fieldset>
+          <label className="block space-y-2"><span className="text-sm font-medium">Mobile money number</span><input name="phone" required type="tel" autoComplete="tel" pattern="(?:0|233|\+233)[0-9]{9}" placeholder="0241234567" className={input} disabled={busy} /></label>
+          <label className="block space-y-2"><span className="text-sm font-medium">Email address</span><input name="email" required type="email" autoComplete="email" maxLength={254} placeholder="you@example.com" className={input} disabled={busy} /></label>
+          <Button type="submit" disabled={busy} className="h-12 w-full text-base">{busy ? <Loader2 className="animate-spin" /> : <LockKeyhole />}Pay GHC {price}</Button>
+        </form> : <div className="space-y-5" aria-live="polite">
+          <h2 className="text-xl font-semibold">{status === "paid" ? "Payment verified" : status === "failed" ? "Payment not completed" : "Confirm your payment"}</h2>
+          <p className="text-muted-foreground">{message}</p>
+          <p className="break-all font-mono text-xs text-muted-foreground">Reference: {reference}</p>
+          {status === "send_otp" && <form onSubmit={submitOtp} className="space-y-3"><label className="block space-y-2"><span>One-time code</span><input name="otp" required autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{4,10}" className={input} disabled={busy} /></label><Button disabled={busy} type="submit">Submit code</Button></form>}
+          {status !== "paid" && status !== "failed" && <Button variant="outline" disabled={busy} onClick={() => void check()} className="h-11 w-full">{busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}Check payment status</Button>}
+          {status === "failed" && <Button onClick={() => { setReference(null); setStatus("idle"); setError(""); }}>Try another payment</Button>}
+        </div>}
+        {error && <div role="alert" className="mt-4 space-y-3 text-sm text-destructive"><p>{error}</p>{!reference && <Button variant="outline" onClick={() => window.location.reload()}>Refresh purchases</Button>}</div>}
+      </div>
     </div>
-  );
+    {courses.length > 0 && <PurchaseAccess courses={courses} />}
+  </div>;
 }
