@@ -1,4 +1,4 @@
-// @vitest-environment node
+import { webcrypto } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({ token: "browser-capability" as string | undefined, orders: [] as Record<string, unknown>[], writes: [] as Record<string, unknown>[], transaction: {} as Record<string, unknown> }));
@@ -24,6 +24,7 @@ import { checkPayment, getPurchaseState } from "@/lib/paystack.functions";
 
 const reference = "gemon_0123456789abcdef0123456789abcdef";
 beforeEach(async () => {
+  vi.stubGlobal("crypto", webcrypto);
   state.token = "browser-capability"; state.writes = [];
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(state.token));
   const hash = Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, "0")).join("");
@@ -38,16 +39,16 @@ describe("server payment and access flow", () => {
     const result = await checkPayment({ data: { reference } });
     expect(result.status).toBe("paid"); expect(result.courses.map(c => c.id)).toEqual(["1"]);
     expect(state.writes[0]).toMatchObject({ status: "paid" });
-    expect(state.writes[0]?.verified_at).toEqual(expect.any(String));
+    expect(state.writes[0]?.['verified_at']).toEqual(expect.any(String));
   });
   it("returns all ten courses only after a GHC 300 bundle verifies", async () => {
     state.orders[0] = { ...state.orders[0], amount: 30000, course_selection: "all" };
-    state.transaction.amount = 30000;
+    state.transaction['amount'] = 30000;
     const result = await checkPayment({ data: { reference } });
     expect(result.status).toBe("paid"); expect(result.courses.map(c => c.id)).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
   });
   it("never grants access for a lower buyer-paid amount", async () => {
-    state.transaction.amount = 1;
+    state.transaction['amount'] = 1;
     const result = await checkPayment({ data: { reference } });
     expect(result.courses).toEqual([]); expect(state.writes).toEqual([]);
   });
@@ -59,7 +60,7 @@ describe("server payment and access flow", () => {
   it("rechecks saved paid purchases rather than trusting saved status", async () => {
     state.orders[0] = { ...state.orders[0], status: "paid" };
     expect((await getPurchaseState({ data: { selection: "1" } })).courses.map(c => c.id)).toEqual(["1"]);
-    state.transaction.status = "reversed";
+    state.transaction['status'] = "reversed";
     expect((await getPurchaseState({ data: { selection: "1" } })).courses).toEqual([]);
   });
   it("does not grant access during provider outages", async () => {
