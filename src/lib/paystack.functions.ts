@@ -74,6 +74,14 @@ export const checkPayment = createServerFn({ method: "POST" })
     const status = z.object({ status: z.string() }).safeParse(transaction);
     const failed = status.success && ["failed", "abandoned", "reversed"].includes(status.data.status);
     if (failed) await supabaseAdmin.from("payment_orders").update({ status: "failed" }).eq("reference", order.reference);
+    if (!failed) {
+      try {
+        const charge = chargeResponse.safeParse(await paystack(`/charge/${encodeURIComponent(order.reference)}`, key));
+        if (charge.success && charge.data.reference === order.reference && charge.data.status === "send_otp") {
+          return { status: "send_otp" as const, courses: [] as { id: string; title: string }[], message: charge.data.display_text ?? "Enter the one-time code sent to your phone." };
+        }
+      } catch { /* Verification remains the authority; an unavailable challenge is not a payment failure. */ }
+    }
     return { status: failed ? "failed" as const : "pending" as const, courses: [] as { id: string; title: string }[], message: failed ? "Payment was not completed. No course access has been granted." : "Awaiting confirmation from your mobile wallet. No access has been granted yet." };
   });
 
