@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getCookie, setCookie, getRequest } from "@tanstack/react-start/server";
+import { getCookie, setCookie, getRequest, setResponseHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { checkoutSchema, paymentSelection, referenceSchema, verifiedPayment } from "./payment-rules";
 
@@ -22,6 +22,7 @@ const chargeResponse = z.object({ reference: referenceSchema, status: z.string()
 export const beginPayment = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => checkoutSchema.parse(data))
   .handler(async ({ data }) => {
+    setResponseHeader("Cache-Control", "no-store");
     const key = process.env['PAYSTACK_SECRET_KEY'];
     const publicKey = process.env['PAYSTACK_PUBLIC_KEY'];
     if (!key || !publicKey) throw new Error("Payments are not available yet. Please contact GEMON.");
@@ -49,6 +50,7 @@ export const beginPayment = createServerFn({ method: "POST" })
 export const checkPayment = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => z.object({ reference: referenceSchema }).strict().parse(data))
   .handler(async ({ data }) => {
+    setResponseHeader("Cache-Control", "no-store");
     const key = process.env['PAYSTACK_SECRET_KEY'];
     if (!key) throw new Error("Payments are not available yet.");
     const token = getCookie(cookieName);
@@ -70,4 +72,36 @@ export const checkPayment = createServerFn({ method: "POST" })
     const failed = status.success && ["failed", "abandoned", "reversed"].includes(status.data.status);
     if (failed) await supabaseAdmin.from("payment_orders").update({ status: "failed" }).eq("reference", order.reference);
     return { status: failed ? "failed" as const : "pending" as const, courses: [] as { id: string; title: string }[], message: failed ? "Payment was not completed. No course access has been granted." : "Awaiting confirmation from your mobile wallet. No access has been granted yet." };
+  });
+
+// A guest's unguessable HttpOnly cookie authorizes only their own orders.
+// Reverify paid orders before returning any access; never trust a browser success callback.
+export const getPurchaseState = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => z.object({ selection: z.string().optional() }).strict().parse(data))
+  .handler(async ({ data }) => {
+    setResponseHeader("Cache-Control", "no-store");
+    const token = getCookie(cookieName);
+    const empty = { courses: [] as { id: string; title: string }[], pendingReference: null as string | null, unavailable: false };
+    if (!token) return empty;
+    const hash = await tokenHash(token);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: orders, error } = await supabaseAdmin.from("payment_orders")
+      .select("reference,amount,currency,email,status,course_selection")
+      .eq("checkout_token_hash", hash).in("status", ["paid", "pending"]).order("created_at", { ascending: false });
+    if (error) throw new Error("Unable to retrieve your purchases. Please try again.");
+    const pendingReference = orders?.find(order => order.status === "pending" && order.course_selection === data.selection)?.reference ?? null;
+    const key = process.env['PAYSTACK_SECRET_KEY'];
+    if (!key) return { ...empty, pendingReference, unavailable: true };
+    const courses = new Map<string, { id: string; title: string }>();
+    let unavailable = false;
+    for (const order of orders ?? []) {
+      if (order.status !== "paid") continue;
+      try {
+        const tx = await paystack(`/transaction/verify/${encodeURIComponent(order.reference)}`, key);
+        if (verifiedPayment(order, tx)) {
+          for (const course of paymentSelection(order.course_selection).courses) courses.set(course.id, course);
+        }
+      } catch { unavailable = true; }
+    }
+    return { courses: [...courses.values()], pendingReference, unavailable };
   });

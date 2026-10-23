@@ -4,7 +4,8 @@
 - [x] Check the updated site in the preview.
 
 # Paystack checkout
-- [ ] Connect Cloud and securely collect Paystack keys.
+- [x] Connect Cloud and securely collect Paystack keys.
 - [ ] Replace manual payments with fixed-price Paystack checkout and verification.
 - [ ] Persist verified purchases and protect access.
 - [ ] Test price and verification rules; check checkout in the preview.
+- [ ] Supply genuine course videos and PDFs for verified buyers (waiting on owner).
