@@ -119,7 +119,7 @@ function Checkout() {
           </fieldset>
           <label className="block space-y-2"><span className="text-sm font-medium">Mobile money number</span><input name="phone" required type="tel" autoComplete="tel" pattern="(?:0|233|\+233)[0-9]{9}" placeholder="0241234567" className={input} disabled={busy} /></label>
           <label className="block space-y-2"><span className="text-sm font-medium">Email address</span><input name="email" required type="email" autoComplete="email" maxLength={254} placeholder="you@example.com" className={input} disabled={busy} /></label>
-          <Button type="submit" disabled={busy || !!error} className="h-12 w-full text-base">{busy ? <Loader2 className="animate-spin" /> : <LockKeyhole />}Pay GHC {price}</Button>
+          <Button type="submit" disabled={busy} className="h-12 w-full text-base">{busy ? <Loader2 className="animate-spin" /> : <LockKeyhole />}Pay GHC {price}</Button>
         </form> : <div className="space-y-5" aria-live="polite">
           <h2 className="text-xl font-semibold">{status === "paid" ? "Payment verified" : status === "failed" ? "Payment not completed" : "Confirm your payment"}</h2>
           <p className="text-muted-foreground">{message}</p>

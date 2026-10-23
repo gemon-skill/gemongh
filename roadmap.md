@@ -5,7 +5,8 @@
 
 # Paystack checkout
 - [x] Connect Cloud and securely collect Paystack keys.
-- [ ] Replace manual payments with fixed-price Paystack checkout and verification.
-- [ ] Persist verified purchases and protect access.
-- [ ] Test price and verification rules; check checkout in the preview.
+- [x] Replace manual payments with fixed-price Paystack checkout and verification.
+- [x] Persist verified purchases and protect access.
+- [x] Test price and verification rules; check checkout in the preview.
+- [ ] Complete a real wallet payment and verify access (requires the buyer's wallet approval; no live charge performed).
 - [ ] Supply genuine course videos and PDFs for verified buyers (waiting on owner).
