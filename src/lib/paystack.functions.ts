@@ -34,6 +34,9 @@ export const beginPayment = createServerFn({ method: "POST" })
     const reference = `gemon_${crypto.randomUUID().replaceAll("-", "")}`;
     // This is an intentional guest order. The browser capability, not a user ID or email, authorizes subsequent access.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: pending, error: pendingError } = await supabaseAdmin.from("payment_orders").select("reference").eq("checkout_token_hash", hash).eq("course_selection", selected.selection).eq("status", "pending").order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (pendingError) throw new Error("Unable to check earlier payments. Please try again.");
+    if (pending) return { reference: pending.reference, status: "pending", message: "An earlier payment is awaiting confirmation. Check its status before paying again." };
     const { error } = await supabaseAdmin.from("payment_orders").insert({ reference, checkout_token_hash: hash, course_selection: selected.selection, email: data.email, amount: selected.amount, currency: selected.currency, provider: data.provider });
     if (error) throw new Error("Unable to create your order. Please try again.");
     try {
@@ -104,4 +107,20 @@ export const getPurchaseState = createServerFn({ method: "POST" })
       } catch { unavailable = true; }
     }
     return { courses: [...courses.values()], pendingReference, unavailable };
+  });
+
+export const submitPaymentOtp = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => z.object({ reference: referenceSchema, otp: z.string().regex(/^[0-9]{4,10}$/) }).strict().parse(data))
+  .handler(async ({ data }) => {
+    setResponseHeader("Cache-Control", "no-store");
+    const token = getCookie(cookieName);
+    const key = process.env['PAYSTACK_SECRET_KEY'];
+    if (!token || !key) throw new Error("Open checkout in the browser where you started payment.");
+    const hash = await tokenHash(token);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: order, error } = await supabaseAdmin.from("payment_orders").select("reference,status").eq("reference", data.reference).eq("checkout_token_hash", hash).maybeSingle();
+    if (error || !order || order.status !== "pending") throw new Error("No pending payment was found for this browser.");
+    const result = chargeResponse.parse(await paystack("/charge/submit_otp", key, { reference: order.reference, otp: data.otp }));
+    if (result.reference !== order.reference) throw new Error("Unable to confirm this payment request.");
+    return { status: result.status, message: result.display_text ?? "Code submitted. Check your payment status." };
   });

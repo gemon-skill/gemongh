@@ -79,7 +79,7 @@ function CoursePage() {
           </div>
           <div className="mt-8 rounded-xl border border-primary/40 bg-primary/5 p-6">
             <p className="text-lg font-semibold">Ready to start?</p>
-            <p className="text-sm text-muted-foreground">No account needed. Pay and get access by email.</p>
+            <p className="text-sm text-muted-foreground">No account needed. Access is confirmed after payment verification.</p>
             <CTA id={course.slug} external={course.externalCta} />
           </div>
         </div>
@@ -94,6 +94,7 @@ function CTA({ id, external }: { id: string; external?: { label: string; href: s
       <Link to="/checkout/$id" params={{ id }} className="flex items-center gap-2 rounded-md bg-water px-6 py-3 font-semibold text-primary-foreground shadow-glow transition-transform hover:scale-[1.02]">
         Buy now <ArrowRight className="h-4 w-4" />
       </Link>
+      <Link to="/learn/$id" params={{ id }} className="flex items-center gap-2 rounded-md border border-border px-6 py-3 font-semibold hover:border-primary/50">My course access <ArrowRight className="h-4 w-4" /></Link>
       {external && (
         <a href={external.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-md border border-border px-6 py-3 font-semibold hover:border-primary/50">
           {external.label} <ExternalLink className="h-4 w-4" />
