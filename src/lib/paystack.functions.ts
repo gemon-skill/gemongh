@@ -34,9 +34,6 @@ export const beginPayment = createServerFn({ method: "POST" })
     const reference = `gemon_${crypto.randomUUID().replaceAll("-", "")}`;
     // This is an intentional guest order. The browser capability, not a user ID or email, authorizes subsequent access.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: pending, error: pendingError } = await supabaseAdmin.from("payment_orders").select("reference").eq("checkout_token_hash", hash).eq("course_selection", selected.selection).eq("status", "pending").order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (pendingError) throw new Error("Unable to check earlier payments. Please try again.");
-    if (pending) return { reference: pending.reference, status: "pending", message: "An earlier payment is awaiting confirmation. Check its status before paying again." };
     const { error } = await supabaseAdmin.from("payment_orders").insert({ reference, checkout_token_hash: hash, course_selection: selected.selection, email: data.email, amount: selected.amount, currency: selected.currency, provider: data.provider });
     if (error) throw new Error("Unable to create your order. Please try again.");
     // Paystack's secure checkout sends the wallet PIN prompt; the amount is fixed server-side.

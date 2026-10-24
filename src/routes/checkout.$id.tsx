@@ -145,7 +145,7 @@ function Checkout() {
           <p className="break-all font-mono text-xs text-muted-foreground">Reference: {reference}</p>
           {status === "send_otp" && <form onSubmit={submitOtp} className="space-y-3"><label className="block space-y-2"><span>One-time code</span><input name="otp" required autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{4,10}" className={input} disabled={busy} /></label><Button disabled={busy} type="submit">Submit code</Button></form>}
           {status !== "paid" && status !== "failed" && <Button variant="outline" disabled={busy} onClick={() => void check()} className="h-11 w-full">{busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}Check payment status</Button>}
-          {status === "failed" && <Button onClick={() => { setReference(null); setStatus("idle"); setError(""); }}>Try another payment</Button>}
+          {status !== "paid" && <Button variant={status === "failed" ? "default" : "ghost"} className="w-full" onClick={() => { setReference(null); setStatus("idle"); setError(""); }}>{status === "failed" ? "Try another payment" : "Start a new payment"}</Button>}
         </div>}
         {error && <div role="alert" className="mt-4 space-y-3 text-sm text-destructive"><p>{error}</p>{!reference && <Button variant="outline" onClick={() => window.location.reload()}>Refresh purchases</Button>}</div>}
       </div>
