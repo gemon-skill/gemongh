@@ -10,6 +10,13 @@ export const checkoutSchema = z.object({
   provider: providerSchema,
 }).strict();
 export const referenceSchema = z.string().regex(/^gemon_[a-f0-9]{32}$/);
+/** Paystack's Ghana mobile money charge expects the local 10-digit format, e.g. 0241234567. */
+export function localGhanaPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const local = digits.startsWith("233") ? `0${digits.slice(3)}` : digits;
+  if (!/^0[0-9]{9}$/.test(local)) throw new Error("Enter a valid Ghana mobile money number, e.g. 0241234567.");
+  return local;
+}
 export function paymentSelection(selection: string) {
   const id = selectionSchema.parse(selection);
   const selected = id === "all" ? courses : courses.filter((c) => c.slug === id);
