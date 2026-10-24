@@ -25,6 +25,18 @@ export const Route = createFileRoute("/checkout/$id")({
 
 const input = "w-full rounded-md border border-input bg-background px-4 py-3 outline-none focus:border-primary";
 const providers = [{ id: "mtn", name: "MTN", wallet: "MoMo" }, { id: "vod", name: "Telecel", wallet: "Cash" }, { id: "atl", name: "AirtelTigo", wallet: "Money" }] as const;
+type PaystackPopCtor = new () => { resumeTransaction: (code: string, cb: { onSuccess: () => void; onCancel: () => void }) => void };
+function loadPaystack(): Promise<PaystackPopCtor> {
+  const w = window as unknown as { PaystackPop?: PaystackPopCtor };
+  if (w.PaystackPop) return Promise.resolve(w.PaystackPop);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://js.paystack.co/v2/inline.js";
+    s.onload = () => w.PaystackPop ? resolve(w.PaystackPop) : reject(new Error("Paystack failed to load"));
+    s.onerror = () => reject(new Error("Paystack could not load. Check your connection and try again."));
+    document.head.appendChild(s);
+  });
+}
 
 function Checkout() {
   const { selection, course, title, price } = Route.useLoaderData();
@@ -83,7 +95,14 @@ function Checkout() {
     inFlight.current = true; setBusy(true); setError("");
     try {
       const result = await begin({ data: { selection, provider, email: String(form.get("email")), phone: String(form.get("phone")).trim() } });
-      setReference(result.reference); setStatus(result.status === "success" ? "pending" : result.status); setMessage(result.message);
+      setReference(result.reference); setStatus("pending"); setMessage(result.message);
+      if ("accessCode" in result && result.accessCode) {
+        const Pop = await loadPaystack();
+        new Pop().resumeTransaction(result.accessCode, {
+          onSuccess: () => { setMessage("Payment submitted. Verifying with Paystack…"); setTimeout(() => void check(), 500); },
+          onCancel: () => setMessage("Paystack window closed. If you approved the prompt, check your payment status."),
+        });
+      }
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to start payment. Please try again."); }
     finally { inFlight.current = false; setBusy(false); }
   }
@@ -126,7 +145,7 @@ function Checkout() {
           <p className="break-all font-mono text-xs text-muted-foreground">Reference: {reference}</p>
           {status === "send_otp" && <form onSubmit={submitOtp} className="space-y-3"><label className="block space-y-2"><span>One-time code</span><input name="otp" required autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{4,10}" className={input} disabled={busy} /></label><Button disabled={busy} type="submit">Submit code</Button></form>}
           {status !== "paid" && status !== "failed" && <Button variant="outline" disabled={busy} onClick={() => void check()} className="h-11 w-full">{busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}Check payment status</Button>}
-          {status === "failed" && <Button onClick={() => { setReference(null); setStatus("idle"); setError(""); }}>Try another payment</Button>}
+          {status !== "paid" && <Button variant={status === "failed" ? "default" : "ghost"} className="w-full" onClick={() => { setReference(null); setStatus("idle"); setError(""); }}>{status === "failed" ? "Try another payment" : "Start a new payment"}</Button>}
         </div>}
         {error && <div role="alert" className="mt-4 space-y-3 text-sm text-destructive"><p>{error}</p>{!reference && <Button variant="outline" onClick={() => window.location.reload()}>Refresh purchases</Button>}</div>}
       </div>

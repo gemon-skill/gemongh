@@ -34,19 +34,16 @@ export const beginPayment = createServerFn({ method: "POST" })
     const reference = `gemon_${crypto.randomUUID().replaceAll("-", "")}`;
     // This is an intentional guest order. The browser capability, not a user ID or email, authorizes subsequent access.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: pending, error: pendingError } = await supabaseAdmin.from("payment_orders").select("reference").eq("checkout_token_hash", hash).eq("course_selection", selected.selection).eq("status", "pending").order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (pendingError) throw new Error("Unable to check earlier payments. Please try again.");
-    if (pending) return { reference: pending.reference, status: "pending", message: "An earlier payment is awaiting confirmation. Check its status before paying again." };
     const { error } = await supabaseAdmin.from("payment_orders").insert({ reference, checkout_token_hash: hash, course_selection: selected.selection, email: data.email, amount: selected.amount, currency: selected.currency, provider: data.provider });
     if (error) throw new Error("Unable to create your order. Please try again.");
+    // Paystack's secure checkout sends the wallet PIN prompt; the amount is fixed server-side.
     try {
-      const phone = data.phone.replace(/^\+/, "").replace(/^0/, "233");
-      const charged = chargeResponse.parse(await paystack("/charge", key, { reference, amount: selected.amount, currency: "GHS", email: data.email, mobile_money: { phone, provider: data.provider }, metadata: { course_selection: selected.selection } }));
-      if (charged.reference !== reference) throw new Error("Unable to confirm this payment request.");
-      return { reference, status: charged.status, message: charged.display_text ?? "Approve the payment request on your phone, then check your payment status." };
-    } catch {
-      // Do not mark failed: an upstream timeout may still have created the charge.
-      return { reference, status: "pending", message: "The wallet request could not be confirmed yet. Check your phone and payment status before trying again." };
+      const init = z.object({ access_code: z.string(), reference: z.string() }).parse(await paystack("/transaction/initialize", key, { reference, amount: selected.amount, currency: "GHS", email: data.email, channels: ["mobile_money"], metadata: { course_selection: selected.selection, phone: data.phone, provider: data.provider } }));
+      if (init.reference !== reference) throw new Error("Unable to confirm this payment request.");
+      return { reference, status: "open_checkout", accessCode: init.access_code, message: "Complete the payment in the Paystack window. Approve the prompt on your phone." };
+    } catch (e) {
+      await supabaseAdmin.from("payment_orders").update({ status: "failed" }).eq("reference", reference);
+      throw new Error(e instanceof Error ? e.message : "Unable to start payment. Please try again.");
     }
   });
 
