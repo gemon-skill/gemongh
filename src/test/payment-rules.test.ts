@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkoutSchema, paymentSelection, providerSchema, verifiedPayment, selectionIncludesCourse } from "@/lib/payment-rules";
+import { checkoutSchema, paymentSelection, providerSchema, verifiedPayment, selectionIncludesCourse, localGhanaPhone } from "@/lib/payment-rules";
 describe("Paystack rules", () => {
   it("a single course grants only that course", () => { expect(selectionIncludesCourse("1", "1")).toBe(true); expect(selectionIncludesCourse("1", "2")).toBe(false); });
   it("the bundle grants all ten courses and no others", () => { for (let i = 1; i <= 10; i++) expect(selectionIncludesCourse("all", String(i))).toBe(true); expect(selectionIncludesCourse("all", "11")).toBe(false); });
@@ -7,6 +7,7 @@ describe("Paystack rules", () => {
   it("charges GHC 300 for the ten-course bundle", () => { expect(paymentSelection("all").amount).toBe(30000); expect(paymentSelection("all").courses).toHaveLength(10); });
   it("rejects buyer-supplied prices", () => { expect(checkoutSchema.safeParse({ selection: "1", email: "buyer@example.com", phone: "0241234567", provider: "mtn", amount: 1 }).success).toBe(false); });
   it("supports MTN, Telecel and AirtelTigo", () => { for (const provider of ["mtn", "vod", "atl"]) expect(providerSchema.safeParse(provider).success).toBe(true); expect(providerSchema.safeParse("other").success).toBe(false); });
+  it("sends the wallet number to Paystack in local 0XXXXXXXXX format", () => { for (const n of ["0241234567", "233241234567", "+233241234567"]) expect(localGhanaPhone(n)).toBe("0241234567"); });
   it("grants access only to an exact successful payment", () => {
     const order = { reference: "gemon_order", amount: 5000, currency: "GHS", email: "buyer@example.com" };
     const tx = { ...order, status: "success", customer: { email: order.email } };
