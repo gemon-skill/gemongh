@@ -25,6 +25,18 @@ export const Route = createFileRoute("/checkout/$id")({
 
 const input = "w-full rounded-md border border-input bg-background px-4 py-3 outline-none focus:border-primary";
 const providers = [{ id: "mtn", name: "MTN", wallet: "MoMo" }, { id: "vod", name: "Telecel", wallet: "Cash" }, { id: "atl", name: "AirtelTigo", wallet: "Money" }] as const;
+type PaystackPopCtor = new () => { resumeTransaction: (code: string, cb: { onSuccess: () => void; onCancel: () => void }) => void };
+function loadPaystack(): Promise<PaystackPopCtor> {
+  const w = window as unknown as { PaystackPop?: PaystackPopCtor };
+  if (w.PaystackPop) return Promise.resolve(w.PaystackPop);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://js.paystack.co/v2/inline.js";
+    s.onload = () => w.PaystackPop ? resolve(w.PaystackPop) : reject(new Error("Paystack failed to load"));
+    s.onerror = () => reject(new Error("Paystack could not load. Check your connection and try again."));
+    document.head.appendChild(s);
+  });
+}
 
 function Checkout() {
   const { selection, course, title, price } = Route.useLoaderData();
@@ -83,7 +95,14 @@ function Checkout() {
     inFlight.current = true; setBusy(true); setError("");
     try {
       const result = await begin({ data: { selection, provider, email: String(form.get("email")), phone: String(form.get("phone")).trim() } });
-      setReference(result.reference); setStatus(result.status === "success" ? "pending" : result.status); setMessage(result.message);
+      setReference(result.reference); setStatus("pending"); setMessage(result.message);
+      if ("accessCode" in result && result.accessCode) {
+        const Pop = await loadPaystack();
+        new Pop().resumeTransaction(result.accessCode, {
+          onSuccess: () => { setMessage("Payment submitted. Verifying with Paystack…"); setTimeout(() => void check(), 500); },
+          onCancel: () => setMessage("Paystack window closed. If you approved the prompt, check your payment status."),
+        });
+      }
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to start payment. Please try again."); }
     finally { inFlight.current = false; setBusy(false); }
   }
