@@ -4,6 +4,9 @@
 - [x] Check the updated site in the preview.
 
 # Paystack checkout
+- [x] Finish light-blue checkout and matching header logo; center footer on every device.
+- [x] Complete immediate verification and one-time-code states; prevent duplicate charges after uncertain responses.
+- [x] Run payment regression tests and inspect checkout on desktop and mobile.
 - [x] Connect Cloud and securely collect Paystack keys.
 - [x] Replace manual payments with fixed-price Paystack checkout and verification.
 - [x] Persist verified purchases and protect access.

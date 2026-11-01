@@ -68,11 +68,11 @@ function Checkout() {
     return () => { active = false; };
   }, [selection, restore]);
 
-  async function check() {
-    if (!reference || inFlight.current) return;
+  async function check(paymentReference = reference) {
+    if (!paymentReference || inFlight.current) return;
     inFlight.current = true; setBusy(true); setError("");
     try {
-      const result = await verify({ data: { reference } });
+      const result = await verify({ data: { reference: paymentReference } });
       // Do not erase an outstanding OTP challenge when a verify call is still pending.
       setStatus(previous => result.status === "pending" && previous === "send_otp" ? previous : result.status);
       setMessage(result.message);
@@ -92,19 +92,22 @@ function Checkout() {
     e.preventDefault();
     if (inFlight.current || reference || owned) return;
     const form = new FormData(e.currentTarget);
+    let verifyReference: string | null = null;
     inFlight.current = true; setBusy(true); setError("");
     try {
       const result = await begin({ data: { selection, provider, email: String(form.get("email")), phone: String(form.get("phone")).trim() } });
-      setReference(result.reference); setStatus("pending"); setMessage(result.message);
+      setReference(result.reference); setStatus(result.status === "verify" ? "pending" : result.status); setMessage(result.message);
+      if (result.status === "verify") verifyReference = result.reference;
       if ("accessCode" in result && result.accessCode) {
         const Pop = await loadPaystack();
         new Pop().resumeTransaction(result.accessCode, {
-          onSuccess: () => { setMessage("Payment submitted. Verifying with Paystack…"); setTimeout(() => void check(), 500); },
+          onSuccess: () => { setMessage("Payment submitted. Verifying with Paystack…"); setTimeout(() => void check(result.reference), 500); },
           onCancel: () => setMessage("Paystack window closed. If you approved the prompt, check your payment status."),
         });
       }
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to start payment. Please try again."); }
     finally { inFlight.current = false; setBusy(false); }
+    if (verifyReference) void check(verifyReference);
   }
 
   async function submitOtp(e: React.FormEvent<HTMLFormElement>) {
@@ -112,11 +115,14 @@ function Checkout() {
     if (!reference || inFlight.current) return;
     const otp = String(new FormData(e.currentTarget).get("otp"));
     inFlight.current = true; setBusy(true); setError("");
+    let approved = false;
     try {
       const result = await sendOtp({ data: { reference, otp } });
       setStatus(result.status === "success" ? "pending" : result.status); setMessage(result.message);
+      approved = result.status === "success";
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to submit the code. Please try again."); }
     finally { inFlight.current = false; setBusy(false); }
+    if (approved) void check(reference);
   }
 
   return <div className="mx-auto max-w-4xl px-5 py-10 sm:py-14">
@@ -145,7 +151,7 @@ function Checkout() {
           <p className="break-all font-mono text-xs text-muted-foreground">Reference: {reference}</p>
           {status === "send_otp" && <form onSubmit={submitOtp} className="space-y-3"><label className="block space-y-2"><span>One-time code</span><input name="otp" required autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{4,10}" className={input} disabled={busy} /></label><Button disabled={busy} type="submit">Submit code</Button></form>}
           {status !== "paid" && status !== "failed" && <Button variant="outline" disabled={busy} onClick={() => void check()} className="h-11 w-full">{busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}Check payment status</Button>}
-          {status !== "paid" && <Button variant={status === "failed" ? "default" : "ghost"} className="w-full" onClick={() => { setReference(null); setStatus("idle"); setError(""); }}>{status === "failed" ? "Try another payment" : "Start a new payment"}</Button>}
+          {status === "failed" && <Button className="w-full" disabled={busy} onClick={() => { setReference(null); setStatus("idle"); setError(""); }}>Try another payment</Button>}
         </div>}
         {error && <div role="alert" className="mt-4 space-y-3 text-sm text-destructive"><p>{error}</p>{!reference && <Button variant="outline" onClick={() => window.location.reload()}>Refresh purchases</Button>}</div>}
       </div>

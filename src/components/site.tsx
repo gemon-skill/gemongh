@@ -4,8 +4,9 @@ import { Menu, X, Star, MessageCircle } from "lucide-react";
 import { WHATSAPP_URL, type Course } from "@/lib/courses";
 import { Button } from "@/components/ui/button";
 import gemonLogo from "@/assets/gemon-logo-header.jpg";
+import gemonLightLogo from "@/assets/gemon-logo-light.jpg";
 
-export function Header() {
+export function Header({ checkout = false }: { checkout?: boolean }) {
   const [open, setOpen] = useState(false);
   const links = [
     { to: "/", label: "Home" },
@@ -15,8 +16,8 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
-        <Link to="/" aria-label="GEMON home" className="block shrink-0">
-          <img src={gemonLogo} alt="GEMON — African Money Generator" width={812} height={280} className="h-12 w-auto max-w-[180px] object-contain" />
+        <Link to="/" aria-label="GEMON home" className={`block shrink-0 ${checkout ? "order-last" : ""}`}>
+          <img src={checkout ? gemonLightLogo : gemonLogo} alt="GEMON — African Money Generator" width={812} height={280} className="h-12 w-auto max-w-[180px] object-contain" />
         </Link>
         <nav className="hidden gap-8 md:flex">
           {links.map((l) => (
@@ -38,12 +39,12 @@ export function Header() {
   );
 }
 
-export function Footer() {
+export function Footer({ checkout = false }: { checkout?: boolean }) {
   return (
     <footer className="border-t border-border py-10">
-      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-5 sm:flex-row">
+      <div className="mx-auto flex max-w-7xl flex-col items-center justify-center gap-4 px-5 text-center">
         <Link to="/" aria-label="GEMON home" className="block shrink-0">
-          <img src={gemonLogo} alt="GEMON — African Money Generator" width={812} height={280} loading="lazy" className="h-auto w-56 max-w-full" />
+          <img src={checkout ? gemonLightLogo : gemonLogo} alt="GEMON — African Money Generator" width={812} height={280} loading="lazy" className="h-auto w-56 max-w-full" />
         </Link>
         <p className="font-mono text-xs text-muted-foreground">(C)2026 Gemon.Co</p>
       </div>

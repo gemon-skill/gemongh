@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
   type ErrorComponentProps,
@@ -118,15 +119,18 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const checkout = useRouterState({ select: state => state.location.pathname.startsWith("/checkout/") });
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Header />
+      <div className={checkout ? "checkout-theme min-h-screen" : "min-h-screen"}>
+      <Header checkout={checkout} />
       <main className="pt-16"><Outlet /></main>
-      <Footer />
+      <Footer checkout={checkout} />
       <WhatsAppFab />
       <Toaster />
+      </div>
     </QueryClientProvider>
   );
 }
