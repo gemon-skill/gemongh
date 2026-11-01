@@ -12,5 +12,5 @@
 - Header and footer share the same prepared logo image; derive the square favicon from its coin emblem so branding stays consistent.
 - Paystack guest orders use a hashed HttpOnly browser capability; server functions reverify the provider before returning course entitlements, because callbacks and client state cannot authorize access.
 - Paid course pages live under /learn and expose no lesson files unless server-verified entitlement exists; genuine materials must use private storage with authorized short-lived delivery URLs when supplied.
-- Checkout uses a route-scoped light theme and a matching variant of the shared logo, so other pages retain their existing appearance.
+- Checkout uses a route-scoped theme and the shared dark logo, so other pages retain their existing appearance.
 - Uncertain Paystack charge responses retain the original pending reference; only definitive failures allow a fallback, to avoid duplicate wallet charges.

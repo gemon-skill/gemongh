@@ -108,25 +108,7 @@
 }
 
 .checkout-theme {
-  --background: oklch(0.919565 0.036781 235.473);
-  --foreground: oklch(0.25 0.065 245);
-  --card: oklch(0.97 0.018 232);
-  --card-foreground: var(--foreground);
-  --popover: var(--card);
-  --popover-foreground: var(--foreground);
-  --primary: oklch(0.43 0.12 240);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.86 0.055 232);
-  --secondary-foreground: var(--foreground);
-  --muted: var(--secondary);
-  --muted-foreground: oklch(0.43 0.05 245);
-  --accent: oklch(0.46 0.09 82);
-  --accent-foreground: var(--foreground);
-  --success: oklch(0.42 0.11 150);
-  --destructive: oklch(0.46 0.18 27);
-  --border: oklch(0.65 0.06 232 / 40%);
-  --input: var(--border);
-  --ring: var(--primary);
+  --background: oklch(0 0 0);
   background: var(--background);
   color: var(--foreground);
 }
