@@ -4,6 +4,7 @@ import { z } from "zod";
 import { checkoutSchema, localGhanaPhone, paymentSelection, referenceSchema, verifiedPayment } from "./payment-rules";
 
 const cookieName = "gemon_checkout";
+class PaystackRequestError extends Error {}
 async function tokenHash(token: string) {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
   return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, "0")).join("");
@@ -17,7 +18,8 @@ async function paystack(path: string, key: string, body?: unknown) {
   if (!response.ok || !result.status) {
     const detail = result.data?.gateway_response ?? result.data?.message ?? result.message;
     console.error("Paystack request failed", path, response.status, detail);
-    throw new Error(detail ? `Paystack: ${detail}` : "Paystack could not process this request. Check your wallet details and try again.");
+    if (response.status >= 500) throw new Error("Paystack is temporarily unavailable.");
+    throw new PaystackRequestError(detail ? `Paystack: ${detail}` : "Paystack could not process this request. Check your wallet details and try again.");
   }
   return result.data;
 }
@@ -54,12 +56,15 @@ export const beginPayment = createServerFn({ method: "POST" })
     try {
       const charge = chargeResponse.parse(await paystack("/charge", key, { email: data.email, amount: selected.amount, currency: "GHS", reference, mobile_money: { phone, provider: data.provider }, metadata }));
       if (charge.reference !== reference) throw new Error("Unable to confirm this payment request.");
-      if (charge.status === "failed") throw new Error(charge.gateway_response ?? charge.message ?? "Your wallet declined the payment.");
+      if (charge.status === "failed") throw new PaystackRequestError(charge.gateway_response ?? charge.message ?? "Your wallet declined the payment.");
       const amountText = `GHC ${selected.amount / 100}`;
       if (charge.status === "send_otp") return { reference, status: "send_otp" as const, message: charge.display_text ?? `Enter the code sent to ${phone} to approve ${amountText}.` };
       if (charge.status === "success") return { reference, status: "verify" as const, message: "Payment approved. Verifying…" };
-      return { reference, status: "pending" as const, message: charge.display_text ?? `A prompt for ${amountText} has been sent to ${phone}. Enter your Mobile Money PIN on your phone to approve it.` };
+      return { reference, status: "pending" as const, message: charge.display_text ?? `Check ${phone} for your wallet's approval prompt for ${amountText}. Enter your Mobile Money PIN only on your phone's secure wallet prompt, never on this website.` };
     } catch (e) {
+      // A timeout or malformed response does not prove the wallet charge failed.
+      // Keep this reference pending instead of creating a second charge.
+      if (!(e instanceof PaystackRequestError)) return { reference, status: "pending" as const, message: "Your wallet request is awaiting confirmation. Check your phone and payment status before trying again; do not pay twice." };
       chargeError = e instanceof Error ? e.message : "";
       await supabaseAdmin.from("payment_orders").update({ status: "failed" }).eq("reference", reference);
     }
