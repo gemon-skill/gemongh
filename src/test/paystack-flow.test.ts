@@ -10,6 +10,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from:
   const rows = () => state.orders.filter(row => filters.every(([key, value]) => row[key] === value));
   const query = {
     select: () => query,
+    insert: async (value: Record<string, unknown>) => { state.orders.push(value); return { error: null }; },
     eq: (key: string, value: unknown) => { filters.push([key, value]); return query; },
     in: () => query,
     order: () => query,
@@ -20,7 +21,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from:
   return query;
 } } }));
 
-import { checkPayment, getPurchaseState } from "@/lib/paystack.functions";
+import { beginPayment, checkPayment, getPurchaseState } from "@/lib/paystack.functions";
 
 const reference = "gemon_0123456789abcdef0123456789abcdef";
 beforeEach(async () => {
@@ -35,6 +36,35 @@ beforeEach(async () => {
 });
 
 describe("server payment and access flow", () => {
+  it.each(["mtn", "vod", "atl"] as const)("requests the GHC 50 wallet prompt using %s and a normalized phone", async provider => {
+    state.token = "01234567-89ab-cdef-0123-456789abcdef";
+    vi.mocked(fetch).mockImplementation(async (_url, options) => {
+      const body = JSON.parse(String(options?.body));
+      expect(body.amount).toBe(5000);
+      expect(body.mobile_money).toEqual({ phone: "0241234567", provider });
+      return new Response(JSON.stringify({ status: true, data: { reference: body.reference, status: "send_otp", display_text: "Enter your one-time code" } }));
+    });
+    const result = await beginPayment({ data: { selection: "1", email: "buyer@example.com", phone: "+233241234567", provider } });
+    expect(result.status).toBe("send_otp");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it("initializes the full bundle at exactly GHC 300", async () => {
+    state.token = "01234567-89ab-cdef-0123-456789abcdef";
+    vi.mocked(fetch).mockImplementation(async (_url, options) => {
+      const body = JSON.parse(String(options?.body));
+      expect(body.amount).toBe(30000);
+      return new Response(JSON.stringify({ status: true, data: { reference: body.reference, status: "pay_offline" } }));
+    });
+    expect((await beginPayment({ data: { selection: "all", email: "buyer@example.com", phone: "0241234567", provider: "mtn" } })).status).toBe("pending");
+  });
+  it("keeps an uncertain wallet request pending without initializing a second charge", async () => {
+    state.token = "01234567-89ab-cdef-0123-456789abcdef";
+    vi.mocked(fetch).mockRejectedValue(new Error("Timed out"));
+    const result = await beginPayment({ data: { selection: "1", email: "buyer@example.com", phone: "0241234567", provider: "mtn" } });
+    expect(result.status).toBe("pending");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(state.writes).toEqual([]);
+  });
   it("persists a verified GHC 50 purchase and returns only the selected course", async () => {
     const result = await checkPayment({ data: { reference } });
     expect(result.status).toBe("paid"); expect(result.courses.map(c => c.id)).toEqual(["1"]);

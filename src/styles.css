@@ -108,7 +108,7 @@
 }
 
 .checkout-theme {
-  --background: oklch(0.915 0.047 232);
+  --background: oklch(0.919565 0.036781 235.473);
   --foreground: oklch(0.25 0.065 245);
   --card: oklch(0.97 0.018 232);
   --card-foreground: var(--foreground);
@@ -120,7 +120,7 @@
   --secondary-foreground: var(--foreground);
   --muted: var(--secondary);
   --muted-foreground: oklch(0.43 0.05 245);
-  --accent: oklch(0.79 0.14 88);
+  --accent: oklch(0.46 0.09 82);
   --accent-foreground: var(--foreground);
   --success: oklch(0.42 0.11 150);
   --destructive: oklch(0.46 0.18 27);

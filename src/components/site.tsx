@@ -39,12 +39,12 @@ export function Header({ checkout = false }: { checkout?: boolean }) {
   );
 }
 
-export function Footer() {
+export function Footer({ checkout = false }: { checkout?: boolean }) {
   return (
     <footer className="border-t border-border py-10">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-center gap-4 px-5 text-center">
         <Link to="/" aria-label="GEMON home" className="block shrink-0">
-          <img src={gemonLogo} alt="GEMON — African Money Generator" width={812} height={280} loading="lazy" className="h-auto w-56 max-w-full" />
+          <img src={checkout ? gemonLightLogo : gemonLogo} alt="GEMON — African Money Generator" width={812} height={280} loading="lazy" className="h-auto w-56 max-w-full" />
         </Link>
         <p className="font-mono text-xs text-muted-foreground">(C)2026 Gemon.Co</p>
       </div>
