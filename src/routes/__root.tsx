@@ -127,7 +127,7 @@ function RootComponent() {
       <div className={checkout ? "checkout-theme min-h-screen" : "min-h-screen"}>
       <Header checkout={checkout} />
       <main className="pt-16"><Outlet /></main>
-      <Footer checkout={checkout} />
+      <Footer />
       <WhatsAppFab />
       <Toaster />
       </div>

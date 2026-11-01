@@ -26,6 +26,7 @@ export const Route = createFileRoute("/checkout/$id")({
 const input = "w-full rounded-md border border-input bg-background px-4 py-3 outline-none focus:border-primary";
 const providers = [{ id: "mtn", name: "MTN", wallet: "MoMo" }, { id: "vod", name: "Telecel", wallet: "Cash" }, { id: "atl", name: "AirtelTigo", wallet: "Money" }] as const;
 type PaystackPopCtor = new () => { resumeTransaction: (code: string, cb: { onSuccess: () => void; onCancel: () => void }) => void };
+const WALLET_APPROVAL_SECONDS = 14;
 function loadPaystack(): Promise<PaystackPopCtor> {
   const w = window as unknown as { PaystackPop?: PaystackPopCtor };
   if (w.PaystackPop) return Promise.resolve(w.PaystackPop);
@@ -51,6 +52,7 @@ function Checkout() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [restoring, setRestoring] = useState(true);
+  const [approvalWait, setApprovalWait] = useState(0);
   const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
   const inFlight = useRef(false);
   const owned = selection === "all" ? courses.length === 10 : courses.some(c => c.id === selection);
@@ -84,8 +86,21 @@ function Checkout() {
   useEffect(() => {
     if (!reference || status === "paid" || status === "failed") return;
     let attempts = 0;
-    const timer = window.setInterval(() => { attempts++; void check(); if (attempts >= 30) window.clearInterval(timer); }, 10000);
-    return () => window.clearInterval(timer);
+    let timer: number | undefined;
+    const waitingForWallet = status === "pending";
+    setApprovalWait(waitingForWallet ? WALLET_APPROVAL_SECONDS : 0);
+    const countdown = waitingForWallet ? window.setInterval(() => setApprovalWait(seconds => Math.max(0, seconds - 1)), 1000) : undefined;
+    const start = window.setTimeout(() => {
+      if (countdown !== undefined) window.clearInterval(countdown);
+      setApprovalWait(0);
+      void check(reference);
+      timer = window.setInterval(() => { attempts++; void check(reference); if (attempts >= 30 && timer !== undefined) window.clearInterval(timer); }, 10000);
+    }, waitingForWallet ? WALLET_APPROVAL_SECONDS * 1000 : 10000);
+    return () => {
+      window.clearTimeout(start);
+      if (countdown !== undefined) window.clearInterval(countdown);
+      if (timer !== undefined) window.clearInterval(timer);
+    };
   }, [reference, status]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -148,9 +163,11 @@ function Checkout() {
         </form> : <div className="space-y-5" aria-live="polite">
           <h2 className="text-xl font-semibold">{status === "paid" ? "Payment verified" : status === "failed" ? "Payment not completed" : "Confirm your payment"}</h2>
           <p className="text-muted-foreground">{message}</p>
+          {status === "pending" && approvalWait > 0 && <p role="status" className="flex items-center gap-2 text-sm text-primary"><Loader2 className="size-4 shrink-0 animate-spin" />Waiting for wallet authorization · {approvalWait}s</p>}
+          {status === "pending" && <p className="text-sm text-muted-foreground">Approve GHC {price} in your network’s secure prompt on your phone. Never enter your Mobile Money PIN on this website. Prompt timing depends on MTN, Telecel or AirtelTigo.</p>}
           <p className="break-all font-mono text-xs text-muted-foreground">Reference: {reference}</p>
           {status === "send_otp" && <form onSubmit={submitOtp} className="space-y-3"><label className="block space-y-2"><span>One-time code</span><input name="otp" required autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{4,10}" className={input} disabled={busy} /></label><Button disabled={busy} type="submit">Submit code</Button></form>}
-          {status !== "paid" && status !== "failed" && <Button variant="outline" disabled={busy} onClick={() => void check()} className="h-11 w-full">{busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}Check payment status</Button>}
+          {status !== "paid" && status !== "failed" && <Button variant="outline" disabled={busy || (status === "pending" && approvalWait > 0)} onClick={() => void check()} className="h-11 w-full">{busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}Check payment status</Button>}
           {status === "failed" && <Button className="w-full" disabled={busy} onClick={() => { setReference(null); setStatus("idle"); setError(""); }}>Try another payment</Button>}
         </div>}
         {error && <div role="alert" className="mt-4 space-y-3 text-sm text-destructive"><p>{error}</p>{!reference && <Button variant="outline" onClick={() => window.location.reload()}>Refresh purchases</Button>}</div>}

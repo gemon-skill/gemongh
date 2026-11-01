@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const payment = vi.hoisted(() => ({ begin: vi.fn(), verify: vi.fn(), restore: vi.fn(), otp: vi.fn() }));
@@ -18,9 +18,28 @@ beforeEach(() => {
   payment.otp.mockResolvedValue({ status: "success", message: "Code accepted" });
   payment.verify.mockResolvedValue({ status: "paid", message: "Verified", courses: [{ id: "1", title: "Course one" }] });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("checkout payment transitions", () => {
+  it("waits 14 seconds before verifying a pending wallet charge", async () => {
+    payment.begin.mockResolvedValue({ reference: "gemon_0123456789abcdef0123456789abcdef", status: "pending", message: "Awaiting wallet approval" });
+    payment.verify.mockResolvedValue({ status: "pending", message: "Awaiting wallet approval", courses: [] });
+    const Checkout = Route.options.component;
+    if (!Checkout) throw new Error("Missing checkout");
+    render(<Checkout />);
+    await screen.findByRole("button", { name: "Pay GHC 50" });
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByLabelText("Mobile money number"), { target: { value: "0241234567" } });
+    fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "buyer@example.com" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Pay GHC 50" })); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(13999); });
+    expect(payment.verify).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Check payment status" }).hasAttribute("disabled")).toBe(true);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(payment.verify).toHaveBeenCalledTimes(1);
+    expect(payment.verify).toHaveBeenCalledWith({ data: { reference: "gemon_0123456789abcdef0123456789abcdef" } });
+    expect(screen.queryByText("Open course")).toBeNull();
+  });
   it("sends the selected network without a buyer price and verifies after OTP before access", async () => {
     const Checkout = Route.options.component;
     if (!Checkout) throw new Error("Missing checkout");
