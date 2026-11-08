@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie, getRequest, setResponseHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { checkoutSchema, localGhanaPhone, paymentSelection, referenceSchema, verifiedPayment } from "./payment-rules";
+import { checkoutSchema, emailCheckoutSchema, localGhanaPhone, paymentSelection, referenceSchema, verifiedPayment } from "./payment-rules";
 
 const cookieName = "gemon_checkout";
 class PaystackRequestError extends Error {}
@@ -24,6 +24,47 @@ async function paystack(path: string, key: string, body?: unknown) {
   return result.data;
 }
 const chargeResponse = z.object({ reference: referenceSchema, status: z.string(), display_text: z.string().optional(), gateway_response: z.string().optional(), message: z.string().optional() });
+
+// Initialize with the secret key so the fixed price cannot be changed in the popup.
+// Inline v2 resumes this exact transaction; callbacks never grant access.
+export const initializeHostedPayment = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => emailCheckoutSchema.parse(data))
+  .handler(async ({ data }) => {
+    setResponseHeader("Cache-Control", "no-store");
+    const key = process.env['PAYSTACK_SECRET_KEY'];
+    const publicKey = process.env['PAYSTACK_PUBLIC_KEY'];
+    if (!key) throw new Error("Paystack initialization failed: PAYSTACK_SECRET_KEY is missing.");
+    if (!publicKey || !/^pk_(live|test)_[A-Za-z0-9]+$/.test(publicKey)) throw new Error("Paystack initialization failed: PAYSTACK_PUBLIC_KEY is missing or invalid.");
+    if (key.startsWith("sk_live_") !== publicKey.startsWith("pk_live_")) throw new Error("Paystack initialization failed: public and secret keys must use the same mode.");
+    const selected = paymentSelection(data.selection);
+    const token = getCookie(cookieName) ?? crypto.randomUUID();
+    if (!/^[a-f0-9-]{36}$/.test(token)) throw new Error("Please clear your checkout cookies and try again.");
+    const https = new URL(getRequest().url).protocol === "https:";
+    setCookie(cookieName, token, { httpOnly: true, secure: https, sameSite: https ? "none" : "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    const hash = await tokenHash(token);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: pending, error: readError } = await supabaseAdmin.from("payment_orders").select("reference,email")
+      .eq("checkout_token_hash", hash).eq("course_selection", selected.selection).eq("status", "pending").order("created_at", { ascending: false });
+    if (readError) throw new Error("Unable to check pending payments. Please try again before paying.");
+    if (pending?.length) return { reference: pending[0].reference, accessCode: null, publicKey, amount: selected.amount, currency: "GHS" as const };
+    const reference = `gemon_${crypto.randomUUID().replaceAll("-", "")}`;
+    const { error } = await supabaseAdmin.from("payment_orders").insert({ reference, checkout_token_hash: hash, course_selection: selected.selection, email: data.email, amount: selected.amount, currency: "GHS", provider: "paystack" });
+    if (error) throw new Error("Unable to create your order. Please try again.");
+    try {
+      const transaction = z.object({ access_code: z.string().min(1), reference: referenceSchema }).parse(await paystack("/transaction/initialize", key, {
+        reference, email: data.email, amount: selected.amount, currency: "GHS", channels: ["mobile_money", "card"], metadata: { course_selection: selected.selection },
+      }));
+      if (transaction.reference !== reference) throw new Error("Paystack returned a different payment reference.");
+      return { reference, accessCode: transaction.access_code, publicKey, amount: selected.amount, currency: "GHS" as const };
+    } catch (error) {
+      if (error instanceof PaystackRequestError) {
+        await supabaseAdmin.from("payment_orders").update({ status: "failed" }).eq("reference", reference).eq("checkout_token_hash", hash);
+        throw error;
+      }
+      // Preserve uncertain initializations rather than allow a duplicate payment.
+      return { reference, accessCode: null, publicKey, amount: selected.amount, currency: "GHS" as const };
+    }
+  });
 
 export const beginPayment = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => checkoutSchema.parse(data))
