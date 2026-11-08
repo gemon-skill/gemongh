@@ -14,3 +14,4 @@
 - Paid course pages live under /learn and expose no lesson files unless server-verified entitlement exists; genuine materials must use private storage with authorized short-lived delivery URLs when supplied.
 - Checkout uses a route-scoped theme and the shared dark logo, so other pages retain their existing appearance.
 - Uncertain Paystack charge responses retain the original pending reference; only definitive failures allow a fallback, to avoid duplicate wallet charges.
+- All purchase CTAs share BuyButton; initialize hosted payments server-side and resume the returned Inline v2 access code, because client-created transactions cannot enforce immutable prices or browser-scoped entitlements. Load the provider script through the root head, since TanStack Start has no index.html.

@@ -5,6 +5,7 @@ import proofVideo from "@/assets/proof-video.mp4.asset.json";
 import proofPoster from "@/assets/proof-poster.jpg.asset.json";
 import { courses } from "@/lib/courses";
 import { CourseCover, Stars } from "@/components/site";
+import { BuyButton } from "@/components/buy-button";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -112,7 +113,7 @@ function Index() {
             <p className="mt-2 text-2xl font-bold">Get all 10 courses for GHC 300</p>
             <p className="text-sm text-muted-foreground"><s>GHC 500</s> · one payment, lifetime access</p>
           </div>
-          <Link to="/checkout/$id" params={{ id: "all" }} className="rounded-md bg-accent px-6 py-3 text-center font-semibold text-accent-foreground shadow-glow transition-transform hover:scale-[1.03]">Buy all 10 — GHC 300</Link>
+          <BuyButton selection="all" className="h-auto bg-accent px-6 py-3 text-center font-semibold text-accent-foreground shadow-glow hover:bg-accent/90">Buy all 10 — GHC 300</BuyButton>
         </div>
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((c) => (
