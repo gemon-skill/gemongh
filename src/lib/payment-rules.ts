@@ -3,6 +3,10 @@ import { courses, PRICE_GHS, BUNDLE_GHS } from "./courses";
 
 export const selectionSchema = z.enum(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "all"]);
 export const providerSchema = z.enum(["mtn", "vod", "atl"]);
+export const emailCheckoutSchema = z.object({
+  selection: selectionSchema,
+  email: z.string().trim().email().max(254).transform(value => value.toLowerCase()),
+}).strict();
 export const checkoutSchema = z.object({
   selection: selectionSchema,
   email: z.string().trim().email().max(254).transform((v) => v.toLowerCase()),

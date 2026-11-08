@@ -3,6 +3,7 @@ import { CheckCircle2, FileText, PlayCircle, ArrowRight, ExternalLink } from "lu
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { getCourse } from "@/lib/courses";
 import { CourseCover, Stars } from "@/components/site";
+import { BuyButton } from "@/components/buy-button";
 
 export const Route = createFileRoute("/courses/$id")({
   loader: ({ params }) => {
@@ -91,9 +92,9 @@ function CoursePage() {
 function CTA({ id, external }: { id: string; external?: { label: string; href: string } | undefined }) {
   return (
     <div className="mt-6 flex flex-wrap gap-3">
-      <Link to="/checkout/$id" params={{ id }} className="flex items-center gap-2 rounded-md bg-water px-6 py-3 font-semibold text-primary-foreground shadow-glow transition-transform hover:scale-[1.02]">
+      <BuyButton selection={id} className="h-auto px-6 py-3 font-semibold shadow-glow">
         Buy now <ArrowRight className="h-4 w-4" />
-      </Link>
+      </BuyButton>
       <Link to="/learn/$id" params={{ id }} className="flex items-center gap-2 rounded-md border border-border px-6 py-3 font-semibold hover:border-primary/50">My course access <ArrowRight className="h-4 w-4" /></Link>
       {external && (
         <a href={external.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-md border border-border px-6 py-3 font-semibold hover:border-primary/50">

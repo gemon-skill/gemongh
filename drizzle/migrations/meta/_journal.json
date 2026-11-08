@@ -8,6 +8,13 @@
       "when": 1792631051247,
       "tag": "0000_paystack_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794102987145,
+      "tag": "0001_paystack_hosted_checkout",
+      "breakpoints": true
     }
   ]
 }
