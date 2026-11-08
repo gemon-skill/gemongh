@@ -4,7 +4,7 @@
 - [x] Check the updated site in the preview.
 
 # Paystack checkout
-- [ ] Change checkout to black and allow 14 seconds before checking pending wallet approval; test and inspect.
+- [x] Change checkout to black and allow 14 seconds before checking pending wallet approval; test and inspect.
 - [x] Finish light-blue checkout and matching header logo; center footer on every device.
 - [x] Complete immediate verification and one-time-code states; prevent duplicate charges after uncertain responses.
 - [x] Run payment regression tests and inspect checkout on desktop and mobile.
