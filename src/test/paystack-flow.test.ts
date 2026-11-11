@@ -21,7 +21,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from:
   return query;
 } } }));
 
-import { beginPayment, checkPayment, getPurchaseState } from "@/lib/paystack.functions";
+import { beginPayment, initializeHostedPayment, checkPayment, getPurchaseState } from "@/lib/paystack.functions";
 
 const reference = "gemon_0123456789abcdef0123456789abcdef";
 beforeEach(async () => {
@@ -32,10 +32,40 @@ beforeEach(async () => {
   state.orders = [{ reference, amount: 5000, currency: "GHS", email: "buyer@example.com", status: "pending", course_selection: "1", checkout_token_hash: hash }];
   state.transaction = { reference, amount: 5000, currency: "GHS", status: "success", customer: { email: "buyer@example.com" } };
   vi.stubEnv("PAYSTACK_SECRET_KEY", "unit-test-only");
+  vi.stubEnv("PAYSTACK_PUBLIC_KEY", "pk_test_unitTestOnly");
   vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ status: true, data: state.transaction }), { status: 200 })));
 });
 
 describe("server payment and access flow", () => {
+  it.each([["1", 5000], ["all", 30000]] as const)("initializes email-first %s at %i pesewas with card and mobile money", async (selection, amount) => {
+    state.token = "01234567-89ab-cdef-0123-456789abcdef";
+    state.orders = [];
+    vi.mocked(fetch).mockImplementation(async (url, options) => {
+      expect(url).toBe("https://api.paystack.co/transaction/initialize");
+      const body = JSON.parse(String(options?.body));
+      expect(body).toMatchObject({ email: "buyer@example.com", currency: "GHS", amount, channels: ["mobile_money", "card"] });
+      expect(body.reference).toMatch(/^gemon_[a-f0-9]{32}$/);
+      return new Response(JSON.stringify({ status: true, data: { reference: body.reference, access_code: "unit-access" } }));
+    });
+    const result = await initializeHostedPayment({ data: { selection, email: "buyer@example.com" } });
+    expect(result.accessCode).toBe("unit-access");
+    expect(state.orders[0]).toMatchObject({ amount, provider: "paystack", email: "buyer@example.com" });
+    expect(state.writes).toEqual([]);
+  });
+  it("rejects an email-first buyer-supplied amount", async () => {
+    await expect(initializeHostedPayment({ data: { selection: "all", email: "buyer@example.com", amount: 1 } as never })).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("generates different references for independent purchases", async () => {
+    state.token = "01234567-89ab-cdef-0123-456789abcdef"; state.orders = [];
+    vi.mocked(fetch).mockImplementation(async (_url, options) => {
+      const body = JSON.parse(String(options?.body));
+      return new Response(JSON.stringify({ status: true, data: { reference: body.reference, access_code: "unit-access" } }));
+    });
+    const one = await initializeHostedPayment({ data: { selection: "1", email: "buyer@example.com" } });
+    const two = await initializeHostedPayment({ data: { selection: "2", email: "buyer@example.com" } });
+    expect(one.reference).not.toBe(two.reference);
+  });
   it.each(["mtn", "vod", "atl"] as const)("requests the GHC 50 wallet prompt using %s and a normalized phone", async provider => {
     state.token = "01234567-89ab-cdef-0123-456789abcdef";
     vi.mocked(fetch).mockImplementation(async (_url, options) => {

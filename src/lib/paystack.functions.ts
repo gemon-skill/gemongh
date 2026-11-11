@@ -46,7 +46,8 @@ export const initializeHostedPayment = createServerFn({ method: "POST" })
     const { data: pending, error: readError } = await supabaseAdmin.from("payment_orders").select("reference,email")
       .eq("checkout_token_hash", hash).eq("course_selection", selected.selection).eq("status", "pending").order("created_at", { ascending: false });
     if (readError) throw new Error("Unable to check pending payments. Please try again before paying.");
-    if (pending?.length) return { reference: pending[0].reference, accessCode: null, publicKey, amount: selected.amount, currency: "GHS" as const };
+    const existing = pending?.[0];
+    if (existing) return { reference: existing.reference, accessCode: null, publicKey, amount: selected.amount, currency: "GHS" as const };
     const reference = `gemon_${crypto.randomUUID().replaceAll("-", "")}`;
     const { error } = await supabaseAdmin.from("payment_orders").insert({ reference, checkout_token_hash: hash, course_selection: selected.selection, email: data.email, amount: selected.amount, currency: "GHS", provider: "paystack" });
     if (error) throw new Error("Unable to create your order. Please try again.");
