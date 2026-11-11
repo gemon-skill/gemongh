@@ -1,9 +1,9 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { Smartphone, LockKeyhole, ShieldCheck, Loader2, RefreshCw, ArrowLeft } from "lucide-react";
+import { LockKeyhole, ShieldCheck, Loader2, RefreshCw, ArrowLeft } from "lucide-react";
 import { getCourse, PRICE_GHS, BUNDLE_GHS } from "@/lib/courses";
-import { beginPayment, checkPayment, getPurchaseState, submitPaymentOtp } from "@/lib/paystack.functions";
+import { checkPayment, getPurchaseState, submitPaymentOtp } from "@/lib/paystack.functions";
 import { Button } from "@/components/ui/button";
 import { PurchaseAccess } from "@/components/purchase-access";
 import { BuyButton } from "@/components/buy-button";
@@ -25,28 +25,13 @@ export const Route = createFileRoute("/checkout/$id")({
 });
 
 const input = "w-full rounded-md border border-input bg-background px-4 py-3 outline-none focus:border-primary";
-const providers = [{ id: "mtn", name: "MTN", wallet: "MoMo" }, { id: "vod", name: "Telecel", wallet: "Cash" }, { id: "atl", name: "AirtelTigo", wallet: "Money" }] as const;
-type PaystackPopCtor = new () => { resumeTransaction: (code: string, cb: { onSuccess: () => void; onCancel: () => void }) => void };
 const WALLET_APPROVAL_SECONDS = 14;
-function loadPaystack(): Promise<PaystackPopCtor> {
-  const w = window as unknown as { PaystackPop?: PaystackPopCtor };
-  if (w.PaystackPop) return Promise.resolve(w.PaystackPop);
-  return new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = "https://js.paystack.co/v2/inline.js";
-    s.onload = () => w.PaystackPop ? resolve(w.PaystackPop) : reject(new Error("Paystack failed to load"));
-    s.onerror = () => reject(new Error("Paystack could not load. Check your connection and try again."));
-    document.head.appendChild(s);
-  });
-}
 
 function Checkout() {
   const { selection, course, title, price } = Route.useLoaderData();
-  const begin = useServerFn(beginPayment);
   const verify = useServerFn(checkPayment);
   const restore = useServerFn(getPurchaseState);
   const sendOtp = useServerFn(submitPaymentOtp);
-  const [provider, setProvider] = useState<"mtn" | "vod" | "atl">("mtn");
   const [reference, setReference] = useState<string | null>(null);
   const [status, setStatus] = useState("idle");
   const [message, setMessage] = useState("");
@@ -104,28 +89,6 @@ function Checkout() {
     };
   }, [reference, status]);
 
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (inFlight.current || reference || owned) return;
-    const form = new FormData(e.currentTarget);
-    let verifyReference: string | null = null;
-    inFlight.current = true; setBusy(true); setError("");
-    try {
-      const result = await begin({ data: { selection, provider, email: String(form.get("email")), phone: String(form.get("phone")).trim() } });
-      setReference(result.reference); setStatus(result.status === "verify" ? "pending" : result.status); setMessage(result.message);
-      if (result.status === "verify") verifyReference = result.reference;
-      if ("accessCode" in result && result.accessCode) {
-        const Pop = await loadPaystack();
-        new Pop().resumeTransaction(result.accessCode, {
-          onSuccess: () => { setMessage("Payment submitted. Verifying with Paystack…"); setTimeout(() => void check(result.reference), 500); },
-          onCancel: () => setMessage("Paystack window closed. If you approved the prompt, check your payment status."),
-        });
-      }
-    } catch (e) { setError(e instanceof Error ? e.message : "Unable to start payment. Please try again."); }
-    finally { inFlight.current = false; setBusy(false); }
-    if (verifyReference) void check(verifyReference);
-  }
-
   async function submitOtp(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!reference || inFlight.current) return;
@@ -150,7 +113,7 @@ function Checkout() {
         <h2 className="mt-3 text-2xl font-semibold leading-snug">{title}</h2>
         <p className="mt-6 text-4xl font-bold">GHC {price}<LockKeyhole className="ml-3 inline size-5 text-muted-foreground" /></p>
         {selection === "all" && <p className="mt-2 text-sm text-accent"><s className="text-muted-foreground">GHC 500</s> · Save GHC 200</p>}
-        <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><ShieldCheck className="size-5 shrink-0 text-success" />Paystack · Secure mobile money payment</p>
+        <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><ShieldCheck className="size-5 shrink-0 text-success" />Paystack · Secure mobile money or card payment</p>
       </div>
       <div className="min-w-0">
         {restoring ? <p role="status" className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" />Checking your purchases…</p> : owned ? <div role="status" className="flex items-center gap-2 font-semibold text-success"><ShieldCheck />Payment verified · Purchased</div> : !reference ? <div className="space-y-5"><p className="text-sm text-muted-foreground">MTN · Telecel · AirtelTigo · Card</p><BuyButton selection={selection} className="h-12 w-full text-base" /></div> : <div className="space-y-5" aria-live="polite">
