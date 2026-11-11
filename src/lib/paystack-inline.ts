@@ -42,7 +42,7 @@ export function loadPaystack(): Promise<PaystackConstructor> {
 }
 
 export function checkoutPublicKey(savedKey: string) {
-  const key = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || savedKey;
+  const key = import.meta.env['VITE_PAYSTACK_PUBLIC_KEY'] || savedKey;
   if (!/^pk_(live|test)_[A-Za-z0-9]+$/.test(key)) {
     throw new Error("Paystack initialization failed: a valid VITE_PAYSTACK_PUBLIC_KEY or saved PAYSTACK_PUBLIC_KEY is required.");
   }

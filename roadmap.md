@@ -4,8 +4,8 @@
 - [x] Check the updated site in the preview.
 
 # Paystack checkout
-- [ ] Connect all Buy buttons and GHC 300 bundle to an email-first Paystack modal with card and mobile money.
-- [ ] Load Inline v2 globally, show initialization errors, and verify modal and fixed-price payments.
+- [x] Connect all Buy buttons and GHC 300 bundle to an email-first Paystack modal with card and mobile money.
+- [x] Load Inline v2 globally, show initialization errors, and verify modal and fixed-price payments (30 tests; live GHC 50 checkout opened without submitting payment).
 - [x] Change checkout to black and allow 14 seconds before checking pending wallet approval; test and inspect.
 - [x] Finish light-blue checkout and matching header logo; center footer on every device.
 - [x] Complete immediate verification and one-time-code states; prevent duplicate charges after uncertain responses.
