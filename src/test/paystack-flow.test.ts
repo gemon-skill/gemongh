@@ -53,7 +53,7 @@ describe("server payment and access flow", () => {
     expect(state.writes).toEqual([]);
   });
   it("rejects an email-first buyer-supplied amount", async () => {
-    await expect(initializeHostedPayment({ data: { selection: "all", email: "buyer@example.com", amount: 1 } as never })).rejects.toThrow();
+    expect(() => initializeHostedPayment({ data: { selection: "all", email: "buyer@example.com", amount: 1 } as never })).toThrow();
     expect(fetch).not.toHaveBeenCalled();
   });
   it("generates different references for independent purchases", async () => {
