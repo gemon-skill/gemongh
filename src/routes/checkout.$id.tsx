@@ -6,6 +6,7 @@ import { getCourse, PRICE_GHS, BUNDLE_GHS } from "@/lib/courses";
 import { beginPayment, checkPayment, getPurchaseState, submitPaymentOtp } from "@/lib/paystack.functions";
 import { Button } from "@/components/ui/button";
 import { PurchaseAccess } from "@/components/purchase-access";
+import { BuyButton } from "@/components/buy-button";
 
 export const Route = createFileRoute("/checkout/$id")({
   loader: ({ params }) => {
@@ -152,15 +153,7 @@ function Checkout() {
         <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><ShieldCheck className="size-5 shrink-0 text-success" />Paystack · Secure mobile money payment</p>
       </div>
       <div className="min-w-0">
-        {restoring ? <p role="status" className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" />Checking your purchases…</p> : owned ? <div role="status" className="flex items-center gap-2 font-semibold text-success"><ShieldCheck />Payment verified · Purchased</div> : !reference ? <form onSubmit={submit} className="space-y-5">
-          <fieldset disabled={busy}>
-            <legend className="mb-3 font-semibold">Mobile money network</legend>
-            <div className="grid grid-cols-3 gap-2">{providers.map(p => <Button key={p.id} type="button" variant={provider === p.id ? "default" : "outline"} aria-pressed={provider === p.id} onClick={() => setProvider(p.id)} className="h-20 flex-col gap-1 px-1 whitespace-normal"><Smartphone /><span>{p.name}</span><span className="text-xs font-normal">{p.wallet}</span></Button>)}</div>
-          </fieldset>
-          <label className="block space-y-2"><span className="text-sm font-medium">Mobile money number</span><input name="phone" required type="tel" autoComplete="tel" pattern="(?:0|233|\+233)[0-9]{9}" placeholder="0241234567" className={input} disabled={busy} /></label>
-          <label className="block space-y-2"><span className="text-sm font-medium">Email address</span><input name="email" required type="email" autoComplete="email" maxLength={254} placeholder="you@example.com" className={input} disabled={busy} /></label>
-          <Button type="submit" disabled={busy} className="h-12 w-full text-base">{busy ? <Loader2 className="animate-spin" /> : <LockKeyhole />}Pay GHC {price}</Button>
-        </form> : <div className="space-y-5" aria-live="polite">
+        {restoring ? <p role="status" className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" />Checking your purchases…</p> : owned ? <div role="status" className="flex items-center gap-2 font-semibold text-success"><ShieldCheck />Payment verified · Purchased</div> : !reference ? <div className="space-y-5"><p className="text-sm text-muted-foreground">MTN · Telecel · AirtelTigo · Card</p><BuyButton selection={selection} className="h-12 w-full text-base" /></div> : <div className="space-y-5" aria-live="polite">
           <h2 className="text-xl font-semibold">{status === "paid" ? "Payment verified" : status === "failed" ? "Payment not completed" : "Confirm your payment"}</h2>
           <p className="text-muted-foreground">{message}</p>
           {status === "pending" && approvalWait > 0 && <p role="status" className="flex items-center gap-2 text-sm text-primary"><Loader2 className="size-4 shrink-0 animate-spin" />Waiting for wallet authorization · {approvalWait}s</p>}
