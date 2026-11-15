@@ -15,3 +15,13 @@ describe("Paystack rules", () => {
     for (const change of [{ status: "pending" }, { status: "failed" }, { reference: "another" }, { amount: 100 }, { currency: "USD" }, { customer: { email: "other@example.com" } }]) expect(verifiedPayment(order, { ...tx, ...change })).toBe(false);
   });
 });
+import { declineMessage } from "@/lib/paystack.functions";
+describe("network decline reasons", () => {
+  it("explains MTN limit/balance declines", () => {
+    expect(declineMessage("LOW_BALANCE_OR_PAYEE_LIMIT_REACHED_OR_NOT_ALLOWED")).toContain("limit");
+    expect(declineMessage("Payer has reached their limit")).toContain("*170#");
+  });
+  it("explains wallets that cannot receive the PIN prompt", () => {
+    expect(declineMessage("TARGET_AUTHORIZATION_ERROR")).toContain("registered personal wallet");
+  });
+});
