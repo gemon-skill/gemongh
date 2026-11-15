@@ -123,6 +123,15 @@ export const beginPayment = createServerFn({ method: "POST" })
     }
   });
 
+/** Turns a network decline code into advice the buyer can act on. */
+export function declineMessage(reason?: string | null) {
+  const code = (reason ?? "").toUpperCase();
+  if (/LIMIT|LOW_BALANCE|NOT_ALLOWED/.test(code)) return "Your mobile money network declined this payment before sending the PIN prompt: low balance, a daily/transaction limit, or the wallet is not allowed to pay merchants. Top up or check your limits (MTN: dial *170#), then try again. No course access has been granted.";
+  if (/TARGET_AUTHORIZATION|AUTHORIZATION/.test(code)) return "Your network could not send the PIN prompt to this wallet. Make sure the number is a registered personal wallet on the selected network, check pending approvals (MTN: *170# → My Wallet → My Approvals), then try again. No course access has been granted.";
+  if (/TIMEOUT|EXPIRED|ABANDON/.test(code)) return "The PIN prompt expired before it was approved. Try again and approve the prompt on your phone quickly. No course access has been granted.";
+  return reason ? `Payment was not completed: ${reason}. No course access has been granted.` : "Payment was not completed. No course access has been granted.";
+}
+
 export const checkPayment = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => z.object({ reference: referenceSchema }).strict().parse(data))
   .handler(async ({ data }) => {
@@ -144,7 +153,7 @@ export const checkPayment = createServerFn({ method: "POST" })
       if (saveError) throw new Error("Payment received, but access could not be recorded. Check again; do not pay twice.");
       return { status: "paid" as const, courses: paymentSelection(order.course_selection).courses, message: "Payment verified. Your purchase is confirmed." };
     }
-    const status = z.object({ status: z.string() }).safeParse(transaction);
+    const status = z.object({ status: z.string(), gateway_response: z.string().nullish() }).safeParse(transaction);
     const failed = status.success && ["failed", "abandoned", "reversed"].includes(status.data.status);
     if (failed) await supabaseAdmin.from("payment_orders").update({ status: "failed" }).eq("reference", order.reference);
     if (!failed) {
@@ -155,7 +164,7 @@ export const checkPayment = createServerFn({ method: "POST" })
         }
       } catch { /* Verification remains the authority; an unavailable challenge is not a payment failure. */ }
     }
-    return { status: failed ? "failed" as const : "pending" as const, courses: [] as { id: string; title: string }[], message: failed ? "Payment was not completed. No course access has been granted." : "Awaiting confirmation from your mobile wallet. No access has been granted yet." };
+    return { status: failed ? "failed" as const : "pending" as const, courses: [] as { id: string; title: string }[], message: failed ? declineMessage(status.success ? status.data.gateway_response : null) : "Awaiting confirmation from your mobile wallet. No access has been granted yet." };
   });
 
 // A guest's unguessable HttpOnly cookie authorizes only their own orders.
