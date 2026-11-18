@@ -126,6 +126,7 @@ export const beginPayment = createServerFn({ method: "POST" })
 /** Turns a network decline code into advice the buyer can act on. */
 export function declineMessage(reason?: string | null) {
   const code = (reason ?? "").toUpperCase();
+  if (/NOT REGISTERED|FRI_NOT_FOUND|ACCOUNTHOLDER/.test(code)) return "This number is not an active MTN Mobile Money wallet, so MTN could not send the PIN prompt. Check the number for typos, make sure it is your registered MoMo number (dial *170# on that phone), or choose the correct network (Telecel or AirtelTigo) and try again. No course access has been granted.";
   if (/LIMIT|LOW_BALANCE|NOT_ALLOWED/.test(code)) return "Your mobile money network declined this payment before sending the PIN prompt: low balance, a daily/transaction limit, or the wallet is not allowed to pay merchants. Top up or check your limits (MTN: dial *170#), then try again. No course access has been granted.";
   if (/TARGET_AUTHORIZATION|AUTHORIZATION/.test(code)) return "Your network could not send the PIN prompt to this wallet. Make sure the number is a registered personal wallet on the selected network, check pending approvals (MTN: *170# → My Wallet → My Approvals), then try again. No course access has been granted.";
   if (/TIMEOUT|EXPIRED|ABANDON/.test(code)) return "The PIN prompt expired before it was approved. Try again and approve the prompt on your phone quickly. No course access has been granted.";

@@ -24,4 +24,8 @@ describe("network decline reasons", () => {
   it("explains wallets that cannot receive the PIN prompt", () => {
     expect(declineMessage("TARGET_AUTHORIZATION_ERROR")).toContain("registered personal wallet");
   });
+  it("explains numbers that are not MTN MoMo wallets", () => {
+    expect(declineMessage("Mobile number not registered for MTN mobile money")).toContain("not an active MTN Mobile Money wallet");
+    expect(declineMessage("ACCOUNTHOLDER_WITH_FRI_NOT_FOUND")).toContain("not an active MTN Mobile Money wallet");
+  });
 });
