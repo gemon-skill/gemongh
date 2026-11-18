@@ -3,7 +3,7 @@ import { Play, ShieldCheck, Zap, Users } from "lucide-react";
 import hero from "@/assets/hero.jpg";
 import proofVideo from "@/assets/proof-video.mp4.asset.json";
 import proofPoster from "@/assets/proof-poster.jpg.asset.json";
-import { courses } from "@/lib/courses";
+import { courses, coursePriceGhs } from "@/lib/courses";
 import { CourseCover, Stars } from "@/components/site";
 import { BuyButton } from "@/components/buy-button";
 
@@ -124,7 +124,7 @@ function Index() {
                 <p className="mt-1 text-sm text-muted-foreground">{c.tagline}</p>
                 <div className="mt-auto flex items-center justify-between pt-4">
                   <div className="flex items-center gap-2"><Stars n={c.rating} /><span className="font-mono text-xs text-muted-foreground">{c.students} enrolled</span></div>
-                  <span className="font-mono text-sm font-semibold text-primary">GHC 50</span>
+                  <span className="font-mono text-sm font-semibold text-primary">GHC {coursePriceGhs(c.slug)}</span>
                 </div>
               </div>
             </Link>

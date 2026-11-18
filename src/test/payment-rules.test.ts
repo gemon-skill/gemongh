@@ -3,7 +3,8 @@ import { checkoutSchema, paymentSelection, providerSchema, verifiedPayment, sele
 describe("Paystack rules", () => {
   it("a single course grants only that course", () => { expect(selectionIncludesCourse("1", "1")).toBe(true); expect(selectionIncludesCourse("1", "2")).toBe(false); });
   it("the bundle grants all ten courses and no others", () => { for (let i = 1; i <= 10; i++) expect(selectionIncludesCourse("all", String(i))).toBe(true); expect(selectionIncludesCourse("all", "11")).toBe(false); });
-  it("charges GHC 50 for every single course", () => { for (let i = 1; i <= 10; i++) expect(paymentSelection(String(i)).amount).toBe(5000); });
+  it("charges GHC 1 for course 1", () => { expect(paymentSelection("1").amount).toBe(100); });
+  it("charges GHC 50 for courses 2 to 10", () => { for (let i = 2; i <= 10; i++) expect(paymentSelection(String(i)).amount).toBe(5000); });
   it("charges GHC 300 for the ten-course bundle", () => { expect(paymentSelection("all").amount).toBe(30000); expect(paymentSelection("all").courses).toHaveLength(10); });
   it("rejects buyer-supplied prices", () => { expect(checkoutSchema.safeParse({ selection: "1", email: "buyer@example.com", phone: "0241234567", provider: "mtn", amount: 1 }).success).toBe(false); });
   it("supports MTN, Telecel and AirtelTigo", () => { for (const provider of ["mtn", "vod", "atl"]) expect(providerSchema.safeParse(provider).success).toBe(true); expect(providerSchema.safeParse("other").success).toBe(false); });

@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { LockKeyhole, ShieldCheck, Loader2, RefreshCw, ArrowLeft } from "lucide-react";
-import { getCourse, PRICE_GHS, BUNDLE_GHS } from "@/lib/courses";
+import { getCourse, coursePriceGhs, BUNDLE_GHS } from "@/lib/courses";
 import { checkPayment, getPurchaseState, submitPaymentOtp } from "@/lib/paystack.functions";
 import { Button } from "@/components/ui/button";
 import { PurchaseAccess } from "@/components/purchase-access";
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/checkout/$id")({
   loader: ({ params }) => {
     const course = getCourse(params.id);
     if (params.id !== "all" && !course) throw notFound();
-    return { selection: params.id, course, title: params.id === "all" ? "All 10 courses bundle" : course?.title ?? "Course", price: params.id === "all" ? BUNDLE_GHS : PRICE_GHS };
+    return { selection: params.id, course, title: params.id === "all" ? "All 10 courses bundle" : course?.title ?? "Course", price: params.id === "all" ? BUNDLE_GHS : coursePriceGhs(params.id) };
   },
   head: ({ loaderData }) => ({ meta: [
     { title: `${loaderData?.title ?? "Checkout"} · Paystack checkout — GEMON` },

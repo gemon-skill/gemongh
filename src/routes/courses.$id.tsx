@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { CheckCircle2, FileText, PlayCircle, ArrowRight, ExternalLink } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { getCourse } from "@/lib/courses";
+import { getCourse, coursePriceGhs } from "@/lib/courses";
 import { CourseCover, Stars } from "@/components/site";
 import { BuyButton } from "@/components/buy-button";
 
@@ -37,7 +37,7 @@ function CoursePage() {
           <span className="font-mono text-xs uppercase tracking-widest text-primary">Course {String(course.id).padStart(2, "0")}</span>
           <h1 className="mt-2 text-4xl font-bold leading-tight">{course.title}</h1>
           <div className="mt-4 flex items-center gap-3"><Stars n={course.rating} className="h-5 w-5" /><span className="font-mono text-sm text-muted-foreground">{course.students} enrolled</span></div>
-          <p className="mt-6 text-4xl font-bold">GHC 50 <span className="text-lg font-normal text-muted-foreground">/ $5 intl</span></p>
+          <p className="mt-6 text-4xl font-bold">GHC {coursePriceGhs(id)} <span className="text-lg font-normal text-muted-foreground">/ $5 intl</span></p>
           <CTA id={course.slug} external={course.externalCta} />
         </div>
       </div>

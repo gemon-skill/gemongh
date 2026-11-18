@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { courses, PRICE_GHS, BUNDLE_GHS } from "./courses";
+import { courses, coursePriceGhs, BUNDLE_GHS } from "./courses";
 
 export const selectionSchema = z.enum(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "all"]);
 export const providerSchema = z.enum(["mtn", "vod", "atl"]);
@@ -24,7 +24,7 @@ export function localGhanaPhone(phone: string) {
 export function paymentSelection(selection: string) {
   const id = selectionSchema.parse(selection);
   const selected = id === "all" ? courses : courses.filter((c) => c.slug === id);
-  return { selection: id, title: id === "all" ? "All 10 courses bundle" : selected[0]?.title ?? "Course", amount: (id === "all" ? BUNDLE_GHS : PRICE_GHS) * 100, currency: "GHS", courses: selected.map((c) => ({ id: c.slug, title: c.title })) };
+  return { selection: id, title: id === "all" ? "All 10 courses bundle" : selected[0]?.title ?? "Course", amount: (id === "all" ? BUNDLE_GHS : coursePriceGhs(id)) * 100, currency: "GHS", courses: selected.map((c) => ({ id: c.slug, title: c.title })) };
 }
 export type VerificationOrder = { reference: string; amount: number; currency: string; email: string };
 export function selectionIncludesCourse(selection: string, courseId: string) {

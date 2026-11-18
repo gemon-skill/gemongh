@@ -1,6 +1,11 @@
 export const WHATSAPP_URL = "https://wa.me/233539279325";
 export const MOMO_NUMBER = "0539279325";
 export const PRICE_GHS = 50;
+/** Per-course price overrides in GHC; courses not listed cost PRICE_GHS. */
+export const COURSE_PRICE_OVERRIDES: Record<string, number> = { "1": 1 };
+export function coursePriceGhs(slug: string) {
+  return COURSE_PRICE_OVERRIDES[slug] ?? PRICE_GHS;
+}
 export const PRICE_USD = 5;
 export const BUNDLE_GHS = 300;
 export const BUNDLE_USD = 30;
