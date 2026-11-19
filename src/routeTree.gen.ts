@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as PaymentHelpRouteImport } from './routes/payment-help'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as CoursesIdRouteImport } from './routes/courses.$id'
 import { Route as LearnIdRouteImport } from './routes/learn.$id'
@@ -29,6 +30,11 @@ const AboutRoute = AboutRouteImport.update({
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentHelpRoute = PaymentHelpRouteImport.update({
+  id: '/payment-help',
+  path: '/payment-help',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutIdRoute = CheckoutIdRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
+  '/payment-help': typeof PaymentHelpRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/courses/$id': typeof CoursesIdRoute
   '/learn/$id': typeof LearnIdRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
+  '/payment-help': typeof PaymentHelpRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/courses/$id': typeof CoursesIdRoute
   '/learn/$id': typeof LearnIdRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
+  '/payment-help': typeof PaymentHelpRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/courses/$id': typeof CoursesIdRoute
   '/learn/$id': typeof LearnIdRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/contact'
+    | '/payment-help'
     | '/checkout/$id'
     | '/courses/$id'
     | '/learn/$id'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/contact'
+    | '/payment-help'
     | '/checkout/$id'
     | '/courses/$id'
     | '/learn/$id'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/contact'
+    | '/payment-help'
     | '/checkout/$id'
     | '/courses/$id'
     | '/learn/$id'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ContactRoute: typeof ContactRoute
+  PaymentHelpRoute: typeof PaymentHelpRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   CoursesIdRoute: typeof CoursesIdRoute
   LearnIdRoute: typeof LearnIdRoute
@@ -129,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment-help': {
+      id: '/payment-help'
+      path: '/payment-help'
+      fullPath: '/payment-help'
+      preLoaderRoute: typeof PaymentHelpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout/$id': {
@@ -159,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ContactRoute: ContactRoute,
+  PaymentHelpRoute: PaymentHelpRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   CoursesIdRoute: CoursesIdRoute,
   LearnIdRoute: LearnIdRoute,

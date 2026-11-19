@@ -45,6 +45,7 @@ export function Footer() {
         <Link to="/" aria-label="GEMON home" className="block shrink-0">
           <img src={gemonLogo} alt="GEMON — African Money Generator" width={812} height={280} loading="lazy" className="h-auto w-56 max-w-full" />
         </Link>
+        <Link to="/payment-help" className="text-sm text-primary underline-offset-4 hover:underline">Payment problem? Get help</Link>
         <p className="font-mono text-xs text-muted-foreground">(C)2026 Gemon.Co</p>
       </div>
     </footer>
