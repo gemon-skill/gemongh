@@ -4,6 +4,7 @@
 - [x] Check the updated site in the preview.
 
 # Paystack checkout
+- [x] Fix course 1 email checkout failing because stored price restrictions still require GHC 50; verified live GHC 10 Paystack window on phone and desktop, with all 38 tests passing (no charge submitted).
 - [x] Connect all Buy buttons and GHC 300 bundle to an email-first Paystack modal with card and mobile money.
 - [x] Load Inline v2 globally, show initialization errors, and verify modal and fixed-price payments (30 tests; live GHC 50 checkout opened without submitting payment).
 - [x] Change checkout to black and allow 14 seconds before checking pending wallet approval; test and inspect.

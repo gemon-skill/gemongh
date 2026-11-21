@@ -16,3 +16,4 @@
 - Uncertain Paystack charge responses retain the original pending reference; only definitive failures allow a fallback, to avoid duplicate wallet charges.
 - All purchase CTAs share BuyButton; initialize hosted payments server-side and resume the returned Inline v2 access code, because client-created transactions cannot enforce immutable prices or browser-scoped entitlements. Load the provider script through the root head, since TanStack Start has no index.html.
 - AI payment help lives in a server-only module called through a server function, because the gateway key and instructions must never reach the browser.
+- Price changes must update both server pricing and order constraints while preserving historical order amounts, because checkout inserts and later payment verification must remain valid.

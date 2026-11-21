@@ -50,7 +50,10 @@ export const initializeHostedPayment = createServerFn({ method: "POST" })
     if (existing) return { reference: existing.reference, accessCode: null, publicKey, amount: selected.amount, currency: "GHS" as const };
     const reference = `gemon_${crypto.randomUUID().replaceAll("-", "")}`;
     const { error } = await supabaseAdmin.from("payment_orders").insert({ reference, checkout_token_hash: hash, course_selection: selected.selection, email: data.email, amount: selected.amount, currency: "GHS", provider: "paystack" });
-    if (error) throw new Error("Unable to create your order. Please try again.");
+    if (error) {
+      console.error("Payment order creation failed", { code: error.code, message: error.message, selection: selected.selection, amount: selected.amount });
+      throw new Error("Unable to create your order. Please try again.");
+    }
     try {
       const transaction = z.object({ access_code: z.string().min(1), reference: referenceSchema }).parse(await paystack("/transaction/initialize", key, {
         reference, email: data.email, amount: selected.amount, currency: "GHS", channels: ["mobile_money", "card"], metadata: { course_selection: selected.selection },
@@ -86,7 +89,10 @@ export const beginPayment = createServerFn({ method: "POST" })
     async function createOrder() {
       const reference = `gemon_${crypto.randomUUID().replaceAll("-", "")}`;
       const { error } = await supabaseAdmin.from("payment_orders").insert({ reference, checkout_token_hash: hash, course_selection: selected.selection, email: data.email, amount: selected.amount, currency: selected.currency, provider: data.provider });
-      if (error) throw new Error("Unable to create your order. Please try again.");
+      if (error) {
+        console.error("Payment order creation failed", { code: error.code, message: error.message, selection: selected.selection, amount: selected.amount });
+        throw new Error("Unable to create your order. Please try again.");
+      }
       return reference;
     }
     const metadata = { course_selection: selected.selection, phone, provider: data.provider };

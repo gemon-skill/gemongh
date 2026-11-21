@@ -10,7 +10,14 @@ vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from:
   const rows = () => state.orders.filter(row => filters.every(([key, value]) => row[key] === value));
   const query = {
     select: () => query,
-    insert: async (value: Record<string, unknown>) => { state.orders.push(value); return { error: null }; },
+    insert: async (value: Record<string, unknown>) => {
+      // Match the database price constraint, including historical course-1 orders.
+      const selection = value['course_selection'];
+      const amount = value['amount'];
+      const valid = selection === 'all' ? amount === 30000 : selection === '1' ? amount === 1000 || amount === 5000 : ['2','3','4','5','6','7','8','9','10'].includes(String(selection)) && amount === 5000;
+      if (!valid) return { error: { code: '23514', message: 'payment_orders_check violated' } };
+      state.orders.push({ status: 'pending', ...value }); return { error: null };
+    },
     eq: (key: string, value: unknown) => { filters.push([key, value]); return query; },
     in: () => query,
     order: () => query,

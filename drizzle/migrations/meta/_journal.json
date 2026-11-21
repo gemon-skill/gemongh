@@ -15,6 +15,13 @@
       "when": 1794102987145,
       "tag": "0001_paystack_hosted_checkout",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795279544351,
+      "tag": "0002_course_one_checkout_price",
+      "breakpoints": true
     }
   ]
 }
