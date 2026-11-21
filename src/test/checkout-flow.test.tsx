@@ -11,7 +11,7 @@ import { BuyButton } from "@/components/buy-button";
 beforeEach(() => {
   vi.clearAllMocks();
   payment.restore.mockResolvedValue({ courses: [], pendingReference: null, unavailable: false });
-  payment.initialize.mockResolvedValue({ reference: "gemon_0123456789abcdef0123456789abcdef", accessCode: "unit-access", amount: 100, currency: "GHS", publicKey: "pk_test_unit" });
+  payment.initialize.mockResolvedValue({ reference: "gemon_0123456789abcdef0123456789abcdef", accessCode: "unit-access", amount: 1000, currency: "GHS", publicKey: "pk_test_unit" });
   payment.verify.mockResolvedValue({ status: "pending", message: "Pending", courses: [] });
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });

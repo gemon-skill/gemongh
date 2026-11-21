@@ -37,7 +37,7 @@ beforeEach(async () => {
 });
 
 describe("server payment and access flow", () => {
-  it.each([["1", 100], ["2", 5000], ["all", 30000]] as const)("initializes email-first %s at %i pesewas with card and mobile money", async (selection, amount) => {
+  it.each([["1", 1000], ["2", 5000], ["all", 30000]] as const)("initializes email-first %s at %i pesewas with card and mobile money", async (selection, amount) => {
     state.token = "01234567-89ab-cdef-0123-456789abcdef";
     state.orders = [];
     vi.mocked(fetch).mockImplementation(async (url, options) => {
@@ -66,11 +66,11 @@ describe("server payment and access flow", () => {
     const two = await initializeHostedPayment({ data: { selection: "2", email: "buyer@example.com" } });
     expect(one.reference).not.toBe(two.reference);
   });
-  it.each(["mtn", "vod", "atl"] as const)("requests the GHC 1 course-1 wallet prompt using %s and a normalized phone", async provider => {
+  it.each(["mtn", "vod", "atl"] as const)("requests the GHC 10 course-1 wallet prompt using %s and a normalized phone", async provider => {
     state.token = "01234567-89ab-cdef-0123-456789abcdef";
     vi.mocked(fetch).mockImplementation(async (_url, options) => {
       const body = JSON.parse(String(options?.body));
-      expect(body.amount).toBe(100);
+      expect(body.amount).toBe(1000);
       expect(body.mobile_money).toEqual({ phone: "0241234567", provider });
       return new Response(JSON.stringify({ status: true, data: { reference: body.reference, status: "send_otp", display_text: "Enter your one-time code" } }));
     });
